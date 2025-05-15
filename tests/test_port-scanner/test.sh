@@ -4,7 +4,7 @@
 #           y verifica que detecta esos puertos.
 
 # 1) Define los puertos que quieres probar
-PORTS=(2222 3333 4444)
+PORTS=(631 22 55)
 
 # 2) Arranca netcat en background para cada puerto
 NC_PIDS=()    # array donde guardamos los PID de netcat
