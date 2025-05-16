@@ -6,7 +6,7 @@
 
 
 #define START_PORT 1
-#define END_PORT 1024
+#define END_PORT 5000
 #define NUM_THREADS 100
 
 int next_port = START_PORT;

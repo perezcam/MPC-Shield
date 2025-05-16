@@ -1,47 +1,59 @@
 #!/usr/bin/env bash
-#
-# test.sh — abre puertos de prueba con netcat, ejecuta el escáner
-#           y verifica que detecta esos puertos.
 
-# 1) Define los puertos que quieres probar
-PORTS=(631 22 55)
+# test.sh — Abre puertos de prueba con netcat (OpenBSD), ejecuta el escáner
+#           y verifica si detecta esos puertos correctamente.
 
-# 2) Arranca netcat en background para cada puerto
-NC_PIDS=()    # array donde guardamos los PID de netcat
+set -euo pipefail
+
+echo "🔍 Verificando que no haya puertos abiertos antes del test..."
+
+# if ../../bin/port-scanner | grep -v -E '^$'; then
+#   echo "⚠️  Hay puertos abiertos antes de iniciar la prueba. Limpia primero."
+#   exit 1
+# fi
+
+# --- Configuración ---
+PORTS=(22 3306 631 4080 1025)
+NC_PIDS=()
+
+# --- Abrir puertos con netcat (versión OpenBSD, sin -p) ---
+echo "🚀 Abriendo puertos de prueba: ${PORTS[*]}"
 for p in "${PORTS[@]}"; do
-  # -l : listen, -p : puerto, & : background, &> /dev/null silencia output
-  nc -l -p "$p" &> /dev/null &
-  NC_PIDS+=($!)    # $! es el PID del último proceso lanzado
+  nc -l "$p" &> /dev/null &
+  NC_PIDS+=($!)
 done
 
-# 3) Espera un segundo para que netcat levante los listeners
-sleep 1
+# --- Esperar que los puertos se levanten ---
+sleep 2
 
-# 4) Ejecuta el escáner y captura su salida
+# --- Ejecutar escáner ---
+echo "🔎 Ejecutando escáner de puertos..."
 OUTPUT=$(../../bin/port-scanner)
 
-# 5) Comprueba puerto por puerto
-echo "🧪 Verificando resultados..."
+# --- Verificación ---
+echo "🧪 Verificando resultados del escáner..."
 ALL_OK=true
+
 for p in "${PORTS[@]}"; do
-  if echo "$OUTPUT" | grep -q "^$p "; then
-    echo "  ✅ Puerto $p detectado."
+  if echo "$OUTPUT" | grep -qE "^$p\b"; then
+    echo "  ✅ Puerto $p detectado correctamente."
   else
-    echo "  ❌ ERROR: Puerto $p NO detectado."
+    echo "  ❌ ERROR: Puerto $p NO fue detectado."
     ALL_OK=false
   fi
 done
 
-# 6) Mata los netcat que arrancaste
+# --- Limpiar procesos ---
+echo "🧹 Cerrando listeners..."
 for pid in "${NC_PIDS[@]}"; do
-  kill "$pid" 2>/dev/null
+  kill "$pid" 2>/dev/null || true
 done
 
-# 7) Exit status según resultado
+# --- Resultado final ---
 if $ALL_OK; then
-  echo "🎉 Todas las pruebas pasaron."
+  echo "🎉 Todas las pruebas pasaron correctamente."
   exit 0
 else
-  echo "⚠️  Al menos una prueba falló."
+  echo "❗ Al menos una prueba falló."
   exit 1
 fi
