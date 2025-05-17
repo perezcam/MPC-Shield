@@ -25,7 +25,6 @@ void *scan(void *arg) {
         }
         port = next_port++;
         pthread_mutex_unlock(&mutex);
-        //printf("Scanning port %d...\n", port);
     
         int connection_status = connect_to_port(port);
     
