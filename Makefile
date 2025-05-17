@@ -1,42 +1,39 @@
-#Compilar y testear con:
-#make clean
-#make 
-#make test
+# Makefile para MPC-Shield con soporte a Glib
 
+CC         := gcc
 
+# Flags de Glib
+PKG_CFLAGS := $(shell pkg-config --cflags glib-2.0)
+PKG_LIBS   := $(shell pkg-config --libs   glib-2.0)
 
+# Include paths: proyecto + Glib
+INCLUDES   := -I. -Icore/monitor -Iinterface -Iutils $(PKG_CFLAGS)
 
+# Flags de compilación y enlace
+CFLAGS     := -Wall -Wextra -g $(INCLUDES)
+LDFLAGS    := $(PKG_LIBS)
 
+# Todas las fuentes .c (incluye interface/main.c)
+SRCS       := $(wildcard core/monitor/*.c) \
+              $(wildcard interface/*.c)     \
+              $(wildcard utils/*.c)
+OBJS       := $(SRCS:.c=.o)
 
+TARGET     := mpc_shield
 
+.PHONY: all clean run
 
-CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -Iutils/port-scanner
-SRC = core/port-scanner/scanner.c utils/port-scanner/scanner_utils.c
-BIN = bin/port-scanner
-TEST_SRC = tests/test_port-scanner.c utils/port-scanner/scanner_utils.c
-TEST_BIN = tests/test_scanner
+all: $(TARGET)
 
-# Compila el ejecutable principal
-$(BIN): $(SRC)
-	mkdir -p bin
-	$(CC) $(CFLAGS) -o $(BIN) $(SRC)
+$(TARGET): $(OBJS)
+	$(CC) $(OBJS) $(LDFLAGS) -o $@
 
-# Compila el test (sin ejecutarlo)
-$(TEST_BIN): $(TEST_SRC)
-	$(CC) $(CFLAGS) -o $(TEST_BIN) $(TEST_SRC)
+# Regla genérica: .c → .o
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Ejecuta el test con sudo (porque abre puertos <1024)
-test: $(TEST_BIN) $(BIN)
-	sudo $(TEST_BIN)
+run: all
+	./$(TARGET)
 
-# Limpia binarios
 clean:
-	rm -rf bin $(TEST_BIN)
-
-
-
-
-
-
-
+	rm -f $(OBJS) $(TARGET)

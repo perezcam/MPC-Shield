@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "ctype.h": "c",
+        "dirent.h": "c",
+        "glib.h": "c"
+    }
+}
