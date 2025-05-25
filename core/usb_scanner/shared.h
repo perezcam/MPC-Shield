@@ -1,3 +1,4 @@
+// shared.h
 #ifndef SHARED_H
 #define SHARED_H
 
@@ -22,12 +23,11 @@ typedef struct {
     int      fd;
 } event_t;
 
-/* Enqueue/dequeue */
+/* Enqueue/dequeue (implemented in monitor.c) */
 void push_event(event_t ev);
 void pop_event(event_t *ev);
-void report_connected_devices(const char **devices, int count);
+
+/* Recursively mark `root` and all subdirectories for fanotify */
+void mark_all_dirs(const char *root);
 
 #endif // SHARED_H
-
-
-
