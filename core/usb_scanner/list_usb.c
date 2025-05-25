@@ -1,3 +1,6 @@
+// THIS FILE IS JUST A TEST FOR ONLY USB DEVICES DETECTION
+
+
 // list_usb_fixed.c
 #define _GNU_SOURCE
 #include <libudev.h>
