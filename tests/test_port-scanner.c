@@ -20,6 +20,21 @@ int main() {
             printf("Error al abrir el puerto %d\n", ports[i]);
             return -1;
         }
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            //TODO: Error handling
+            perror("fork");
+            continue;
+        } else if (pid == 0) {
+            //Banner server
+            int client = send_banner(sockets[i], ports[i]);
+            if (client < 0) {
+                //TODO: error creando el cliente
+            } 
+
+            exit(0);  
+        }
     }
 
     sleep(1); // wait for the ports to be open

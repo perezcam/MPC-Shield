@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include "test_scanner_utils.h"
 
 
 int open_fake_port(int port) {
@@ -38,4 +39,27 @@ int open_fake_port(int port) {
 
     return sock;
 
+}
+
+int send_banner(int sockfd, int port) {
+    int client = accept(sockfd, NULL, NULL);
+    if (client < 0) return -1;
+   
+    const char *banner = get_banner(port);
+    send(client, banner, strlen(banner), 0);
+    close(client);
+    return 0;
+     
+}
+
+const char* get_banner(int port) {
+    switch (port) {
+        case 22: return "SSH";
+        case 80: return "HTTP";
+        case 443: return "HTTPS";
+        case 21: return "FTP";
+        case 25: return "SMTP";
+        case 631: return "IPP";
+        default: return "FAKE-SERVICE-BANNER";
+    }
 }
