@@ -12,6 +12,7 @@
 
 #define QUEUE_SIZE   1024
 #define NUM_WORKERS    4
+#define MAX_USBS      64
 
 /* Global fanotify FD */
 extern int g_fan_fd;
@@ -23,11 +24,20 @@ typedef struct {
     int      fd;
 } event_t;
 
-/* Enqueue/dequeue (implemented in monitor.c) */
+
+/* monitor.c exports */
 void push_event(event_t ev);
 void pop_event(event_t *ev);
 
-/* Recursively mark `root` and all subdirectories for fanotify */
+/* scanner.c exports */
 void mark_all_dirs(const char *root);
+int  get_current_mounts(char *mounts[], int max);
+
+
+/* report.c exports */
+void report_connected_devices(const char **devices, int count);
+void report_current_mounts(void);
+void report_file_modification(const char *filepath, uint64_t mask, pid_t pid);
+void report_suspicious(pid_t pid, const char *exe_path);
 
 #endif // SHARED_H
