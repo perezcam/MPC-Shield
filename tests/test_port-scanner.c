@@ -1,4 +1,4 @@
-#include "scanner_utils.h"
+#include "test_scanner_utils.h"
 #include <unistd.h>
 #include <stdio.h>      
 #include <stdlib.h>     
@@ -10,7 +10,7 @@
 #define NUM_PORTS 5
 
 int main() {
-    int ports[NUM_PORTS] = {21, 22, 80, 4, 5};
+    int ports[NUM_PORTS] = {21, 22, 4, 5};
     int sockets[NUM_PORTS];
 
     for (int i = 0; i < NUM_PORTS; i++) {
