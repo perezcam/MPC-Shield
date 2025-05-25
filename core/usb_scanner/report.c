@@ -26,10 +26,22 @@ void report_suspicious(pid_t pid, const char *exe_path) {
            ts, pid, exe_path);
 }
 
-void report_connected_devices(const char **devices, int count) {
-    char ts[64];
-    timestamp(ts, sizeof(ts));
-    printf("[%s] USB devices mounted:\n", ts);
-    for (int i = 0; i < count; i++)
-        printf("    - %s\n", devices[i]);
+
+extern void report_connected_devices(const char **devices, int count);
+
+/**
+ * Report the up‐to‐date list of USB mounts.
+ * This can be called at any time (from any thread).
+ */
+void report_current_mounts(void) {
+    char *mounts[MAX_USBS];
+    int   n = get_current_mounts(mounts, MAX_USBS);
+
+    /* Delegate to the existing reporting routine */
+    report_connected_devices((const char **)mounts, n);
+
+    /* Free the strdup’d strings */
+    for (int i = 0; i < n; i++) {
+        free(mounts[i]);
+    }
 }

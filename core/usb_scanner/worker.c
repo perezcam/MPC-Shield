@@ -5,9 +5,7 @@
 #include <string.h>
 
 /* Provided by report.c */
-void report_file_modification(const char *filepath,
-                              uint64_t     mask,
-                              pid_t        pid);
+void report_file_modification(const char *filepath, uint64_t mask, pid_t        pid);
 void report_suspicious(pid_t pid, const char *exe_path);
 
 /* Helpers to resolve paths */
