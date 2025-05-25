@@ -1,12 +1,26 @@
 #ifndef SCANNER_UTILS_H
 #define SCANNER_UTILS_H
 
-// Try connection to the port, return 1 if open, 0 if not open and -1 if there is and error with the socket creation
-int connect_to_port(int port);         
-// Open a fake port to test the scanner, return the socket descriptor or -1 if there is an error    
-int open_fake_port(int port);                
 
-// Return common service name
-const char* get_service_name(int port);       
+/**
+ * Try connections to the ports using socket
+ * Returns the sockfd if connected, else -1
+ */
+int connect_to_port(int port);
 
-#endif
+void close_socket(int sockfd);
+
+/**
+ * Attempts to read a banner from an open socket.
+ * sockfd must be a valid, connected TCP socket.
+ * buffer should be at least `len + 1` in size.
+ * Returns number of bytes read, or -1 on error/timeout.
+ */
+int grab_banner(int sockfd, char *buffer, int len);
+
+/**
+ * Maps common ports to service names.
+ */
+const char* get_service_name(int port);
+
+#endif // SCANNER_UTILS_H

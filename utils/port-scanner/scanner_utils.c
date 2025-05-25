@@ -3,9 +3,11 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 
 
 #define HOST "127.0.0.1"
+#define BANNER_TIMEOUT_SEC 2
 
 
 int connect_to_port(int port) {
@@ -18,17 +20,28 @@ int connect_to_port(int port) {
         return -1;
     }
 
+    // set a small timeout for connect
+    struct timeval timeout = {BANNER_TIMEOUT_SEC, 0};
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
     memset(&target, 0, sizeof(target));
     target.sin_family = AF_INET;
     target.sin_port = htons(port);
     inet_pton(AF_INET, HOST, &target.sin_addr);
 
     int result = connect(sock, (struct sockaddr*) &target, sizeof(target));
-    close(sock);
-    return result == 0;
+    if (result < 0) {
+        close(sock);
+        return -1;
+    }
+
+    return sock;
 }
 
-
+void close_socket(int sockfd) {
+    close(sockfd);
+}
 
 
 const char* get_service_name(int port) {
@@ -43,6 +56,16 @@ const char* get_service_name(int port) {
         default: return "Desconocido";
     }
 }
+
+
+int grab_banner(int sockfd, char *buffer, int buffer_size) {
+    int n = recv(sockfd, buffer, buffer_size, 0);
+    if (n <= 0) {
+        return -1;
+    }
+    buffer[n] = '\0'; //indicates end of string
+    return n;
+} 
 
 
 int open_fake_port(int port) {
