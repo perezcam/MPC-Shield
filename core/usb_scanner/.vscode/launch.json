@@ -6,7 +6,7 @@
         "name": "Debug C Program",
         "type": "cppdbg",
         "request": "launch",
-        "program": "${workspaceFolder}/${fileBasenameNoExtension}",
+        "program": "${workspaceFolder}/tests/fanotify_dir_test",
         "args": [],
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}",
