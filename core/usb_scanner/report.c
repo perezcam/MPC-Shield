@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <stdlib.h>
 #include "shared.h"
 
 /* Timestamp helper */
@@ -37,11 +38,13 @@ void report_current_mounts(void) {
     char *mounts[MAX_USBS];
     int   n = get_current_mounts(mounts, MAX_USBS);
 
-    /* Delegate to the existing reporting routine */
-    report_connected_devices((const char **)mounts, n);
+    char ts[20];
+    timestamp(ts, sizeof(ts));
 
-    /* Free the strdup’d strings */
+    printf("[%s] USB devices mounted (%d):\n", ts, n);
     for (int i = 0; i < n; i++) {
+        printf("  - %s\n", mounts[i]);
         free(mounts[i]);
     }
+    fflush(stdout);
 }

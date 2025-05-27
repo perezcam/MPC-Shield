@@ -1,100 +1,67 @@
-// monitor.c
 #define _GNU_SOURCE
 #include "shared.h"
-
 #include <stdio.h>
+#include <sys/fanotify.h>
 #include <poll.h>
 #include <unistd.h>
-#include <sys/fanotify.h>
-#include <limits.h>
-#include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
-
-/* ring buffer + sync */
-static event_t         queue[QUEUE_SIZE];
-static int             q_head = 0, q_tail = 0;
-static pthread_mutex_t q_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t  q_cond  = PTHREAD_COND_INITIALIZER;
-
-void push_event(event_t ev) {
-    pthread_mutex_lock(&q_mutex);
-    int next = (q_tail + 1) % QUEUE_SIZE;
-    if (next == q_head) {
-        /* drop oldest */
-        q_head = (q_head + 1) % QUEUE_SIZE;
-    }
-    queue[q_tail] = ev;
-    q_tail = next;
-    pthread_cond_signal(&q_cond);
-    pthread_mutex_unlock(&q_mutex);
-}
-
-void pop_event(event_t *ev) {
-    pthread_mutex_lock(&q_mutex);
-    while (q_head == q_tail)
-        pthread_cond_wait(&q_cond, &q_mutex);
-    *ev = queue[q_head];
-    q_head = (q_head + 1) % QUEUE_SIZE;
-    pthread_mutex_unlock(&q_mutex);
-}
-
-/* Resolve path from FD */
-static void get_path_from_fd(int fd, char *out, size_t sz) {
-    char link[64];
-    snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
-    ssize_t len = readlink(link, out, sz-1);
-    out[(len>0)?len:0] = '\0';
-}
+#include <errno.h>
 
 void *monitor_thread(void *arg) {
     (void)arg;
-    struct pollfd pfd = { .fd = g_fan_fd, .events = POLLIN };
+    struct pollfd fds[2] = {
+        { .fd = g_fan_notify_fd,  .events = POLLIN },
+        { .fd = g_fan_content_fd, .events = POLLIN },
+    };
     char buf[8192];
 
     while (1) {
-        int ret = poll(&pfd, 1, -1);
+        int ret = poll(fds, 2, -1);
         if (ret < 0) {
             if (errno == EINTR) continue;
             perror("monitor poll");
             break;
         }
-        if (!(pfd.revents & POLLIN)) continue;
+        for (int i = 0; i < 2; i++) {
+            if (!(fds[i].revents & POLLIN)) continue;
+            ssize_t len = read(fds[i].fd, buf, sizeof(buf));
+            if (len <= 0) continue;
+            off_t ptr = 0;
+            while (ptr < len) {
+                struct fanotify_event_metadata *md = (void *)(buf + ptr);
+                if (md->event_len < sizeof(*md) || ptr + md->event_len > len) break;
+                event_t ev = { .mask = md->mask, .pid = md->pid };
 
-        ssize_t len = read(g_fan_fd, buf, sizeof(buf));
-        if (len < 0) {
-            if (errno == EINTR) continue;
-            perror("monitor read");
-            break;
-        }
-
-        struct fanotify_event_metadata *md;
-        for (char *ptr = buf; ptr < buf + len;
-             ptr += md->event_len) {
-            md = (void*)ptr;
-
-            if (md->vers != FANOTIFY_METADATA_VERSION)
-                continue;
-            if ((md->mask & FAN_Q_OVERFLOW) || md->fd < 0)
-                continue;
-
-            /* if a directory was just created, start watching it */
-            if (md->mask & FAN_CREATE) {
-                char path[PATH_MAX];
-                get_path_from_fd(md->fd, path, sizeof(path));
-                struct stat st;
-                if (stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
-                    /* recursively mark this new directory */
-                    mark_all_dirs(path);
+                // check for create, delete, move notifications (no content)
+                if (fds[i].fd == g_fan_notify_fd) {
+                    if (!(md->mask & (FAN_CREATE | FAN_DELETE | FAN_MOVED_FROM | FAN_MOVED_TO))) {
+                        ptr += md->event_len;
+                        continue;
+                    }
+                    // metadata events can report the name when FAN_REPORT_NAME is enabled
+                    // the kernel appends a null-terminated filename after the metadata header
+                    char *name = (char *)md + sizeof(struct fanotify_event_metadata);
+                    snprintf(ev.filepath, PATH_MAX, "%s", name);
+                    // on directory creation or move-to, mark the new directory
+                    if (md->mask & (FAN_CREATE | FAN_MOVED_TO)) {
+                        struct stat st;
+                        if (stat(ev.filepath, &st) == 0 && S_ISDIR(st.st_mode)) {
+                            mark_mount(ev.filepath);
+                        }
+                    }
+                    push_event(ev);
+                } 
+                //else ckeck for content events (modifications)
+                else {
+                    char path[PATH_MAX];
+                    get_path_from_fd(md->fd, path, sizeof(path));
+                    strncpy(ev.filepath, path, PATH_MAX);
+                    close(md->fd);
+                    push_event(ev);
                 }
+                ptr += md->event_len;
             }
-
-            /* hand off to worker */
-            push_event((event_t){
-                .mask = md->mask,
-                .pid  = md->pid,
-                .fd   = md->fd
-            });
         }
     }
     return NULL;
