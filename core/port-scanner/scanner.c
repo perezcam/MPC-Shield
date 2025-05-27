@@ -27,21 +27,38 @@ void *scan(void *arg) {
         int sockfd = connect_to_port(port);
         if (sockfd < 0) {
             //Couldn't establish a connection
-            //Port closed
+            //Port closed or filtered (no danger)
             continue;
         }
 
-        //Banner grabbing
+        int known_port = is_known(port); //devuelve -1 si es malicioso, 0 si no se conoce y 1 si es banner conocido
+
         char banner[256];
         int n = grab_banner(sockfd, banner, sizeof(banner)-1);
+        char *danger_word;
 
-        if (n > 0) {
-            printf("%4d abierto ➔ %s (banner: %.200s)\n", port,
-                   get_service_name(port), banner);
+        if (known_port == -1) {
+            search_danger_words(banner, n); //TODO: devuelva la palabra o NULL si no tiene
+        } else if (known_port == 1) {
+            int secure = is_expected_banner(port, banner);
         } else {
-            printf("%4d abierto ➔ %s (sin banner)\n", port,
-                   get_service_name(port));
+            //servicio no conocido
+            search_danger_words(banner);
         }
+
+
+
+
+
+        // //Banner grabbing
+
+        // if (n > 0) {
+        //     printf("%4d abierto ➔ %s (banner: %.200s)\n", port,
+        //            get_service_name(port), banner);
+        // } else {
+        //     printf("%4d abierto ➔ %s (sin banner)\n", port,
+        //            get_service_name(port));
+        // }
 
         close_socket(sockfd);
     }

@@ -19,8 +19,30 @@ void close_socket(int sockfd);
 int grab_banner(int sockfd, char *buffer, int len);
 
 /**
- * Maps common ports to service names.
+ * Returns -1 if is a malicious known port
+ * Returns 1 if is a banner known port
+ * Returns 0 if is an unknown port
  */
-const char* get_service_name(int port);
+int is_known(int port);
+
+
+/**
+ * Returns 1 if is known as a malicious port
+ * Else return 0
+ */
+int is_malicious(int port);
+
+/**
+ * Returns 1 if port is known for a service with identifiable banner
+ * Else return 0
+ */
+int is_banner_known(int port);
+
+
+/**
+ * Receives string banner and n (size of banner)
+ * Returns dangerous word if banner contains it else NULL
+ */
+const char *search_dangerous_words(const char *banner, int n);
 
 #endif // SCANNER_UTILS_H
