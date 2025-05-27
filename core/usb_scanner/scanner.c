@@ -149,6 +149,28 @@ static int get_usb_mounts(char *devnodes[], char *mntpoints[]) {
     return count;
 }
 
+// Remove entries whose devnode no longer appears in /proc/mounts
+static void cleanup_stale_mounts(void) {
+    pthread_mutex_lock(&mount_mutex);
+    for (int i = 0; i < mount_count;) {
+        char *dev = mount_list[i].devnode;
+        char *mnt = find_mount(dev);
+        if (!mnt) {
+            // no longer mounted
+            free(mount_list[i].devnode);
+            free(mount_list[i].mnt_dir);
+            for (int j = i; j < mount_count - 1; j++) {
+                mount_list[j] = mount_list[j+1];
+            }
+            mount_count--;
+        } else {
+            free(mnt);
+            i++;
+        }
+    }
+    pthread_mutex_unlock(&mount_mutex);
+}
+
 void *scanner_thread(void *arg) {
     (void)arg;
     /* 1) Initial enumeration of existing USB mounts */
@@ -207,6 +229,7 @@ void *scanner_thread(void *arg) {
                 }
             }
             udev_device_unref(dev);
+            cleanup_stale_mounts();
         }
     }
     udev_unref(udev);

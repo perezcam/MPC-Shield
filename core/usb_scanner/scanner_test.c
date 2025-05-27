@@ -80,10 +80,6 @@ int main(void) {
         }
     }
 
-    // 5) Reprint mounts after marking
-    printf("\n=== USB mounts after mark_mount ===\n");
-    report_current_mounts();
-
 
     // 6) Infinite periodic reporting
     while (1) {
