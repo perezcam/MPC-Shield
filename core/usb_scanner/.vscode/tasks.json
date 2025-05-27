@@ -1,0 +1,25 @@
+// .vscode/tasks.json
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "build",
+        "type": "shell",
+        "command": "gcc",
+        "args": [
+            "-g",                                          // incluye símbolos de depuración
+            "${workspaceFolder}/tests/fanotify_dir_test.c",// ruta al .c que quieres compilar
+            "-o",                                          // flag de output
+            "${workspaceFolder}/tests/fanotify_dir_test"   // nombre del ejecutable (sin .c)
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": [
+          "$gcc"
+        ]
+      }
+    ]
+  }
+  
