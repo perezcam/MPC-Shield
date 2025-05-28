@@ -7,7 +7,7 @@
 
 
 
-#define NUM_PORTS 8
+#define NUM_PORTS 7
 
 int main() {
     int ports[NUM_PORTS] = {21, 22, 4, 5, 443, 25, 4444};
