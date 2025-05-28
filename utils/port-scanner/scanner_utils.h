@@ -1,48 +1,73 @@
-#ifndef SCANNER_UTILS_H
-#define SCANNER_UTILS_H
+#ifndef SCANNER_H
+#define SCANNER_H
 
+// ———— Connection & Socket Management ————
+/**
+ * Opens a TCP socket to localhost:port with a timeout of 2 sec.
+ * @param port Destination port.
+ * @return Socket descriptor >= 0 on success, or -1 on error.
+ */
+int  connect_to_port(int port);
 
 /**
- * Try connections to the ports using socket
- * Returns the sockfd if connected, else -1
+ * Closes the given socket descriptor.
+ * @param sockfd Socket descriptor to close.
  */
-int connect_to_port(int port);
-
 void close_socket(int sockfd);
 
+// ———— Port Classification ————
 /**
- * Attempts to read a banner from an open socket.
- * sockfd must be a valid, connected TCP socket.
- * buffer should be at least `len + 1` in size.
- * Returns number of bytes read, or -1 on error/timeout.
+ * Classifies a port:
+ *   - returns -1 if it’s malicious,
+ *   -  1 if it’s a known-banner port,
+ *   -  0 otherwise.
  */
-int grab_banner(int sockfd, char *buffer, int len);
+int classify(int port);
 
-/**
- * Returns -1 if is a malicious known port
- * Returns 1 if is a banner known port
- * Returns 0 if is an unknown port
- */
-int is_known(int port);
-
-
-/**
- * Returns 1 if is known as a malicious port
- * Else return 0
- */
-int is_malicious(int port);
-
-/**
- * Returns 1 if port is known for a service with identifiable banner
- * Else return 0
- */
+/** Returns 1 if the port should emit a recognizable banner. */
 int is_banner_known(int port);
 
+/** Returns 1 if the port is in the “malicious” list. */
+int is_malicious(int port);
+
+// ———— Banner Handling ————
+/**
+ * Reads up to buffer_size bytes from sockfd into buffer and null-terminates it.
+ * @param sockfd       Connected socket descriptor.
+ * @param buffer       Destination buffer for the banner.
+ * @param buffer_size  Max bytes to read.
+ * @return Number of bytes read (>0), or -1 on error/timeout.
+ */
+int grab_banner(int sockfd, char *buffer, int buffer_size);
 
 /**
- * Receives string banner and n (size of banner)
- * Returns dangerous word if banner contains it else NULL
+ * Searches for dangerous words in banner[0..n-1].
+ * @param banner Banner text (not necessarily null-terminated beyond n).
+ * @param n      Length of valid data in banner.
+ * @return Pointer to the first matched danger word, or NULL if none found.
  */
 const char *search_dangerous_words(const char *banner, int n);
 
-#endif // SCANNER_UTILS_H
+// ———— Expected Banner Validation ————
+/**
+ * Associates a port with its expected banner substring.
+ */
+typedef struct {
+    int         port;
+    const char *expected;
+} BannerExpectation;
+
+/**
+ * Returns the expected banner substring for a given port, or NULL if undefined.
+ */
+const char *get_expected_banner(int port);
+
+/**
+ * Case-insensitive check whether banner contains the expected substring.
+ * @param port   Port being checked.
+ * @param banner Null-terminated banner string.
+ * @return 1 if match found, 0 otherwise.
+ */
+int is_expected_banner(int port, const char *banner);
+
+#endif /* SCANNER_H */

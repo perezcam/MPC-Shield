@@ -7,7 +7,7 @@
 
 
 #define START_PORT 1
-#define END_PORT 1024
+#define END_PORT 6000
 #define NUM_THREADS 100
 
 int next_port = START_PORT;
@@ -26,39 +26,34 @@ void *scan(void *arg) {
     
         int sockfd = connect_to_port(port);
         if (sockfd < 0) {
-            //Couldn't establish a connection
-            //Port closed or filtered (no danger)
+            // Port closed or filtered (no banner, no danger)
             continue;
         }
 
-        int known_port = is_known(port); //devuelve -1 si es malicioso, 0 si no se conoce y 1 si es banner conocido
-
+        // Grab port banner if it has one
         char banner[256];
-        int n = grab_banner(sockfd, banner, sizeof(banner)-1);
-        char *danger_word;
+        int n = grab_banner(sockfd, banner, sizeof(banner) - 1);
 
-        if (known_port == -1) {
-            search_danger_words(banner, n); //TODO: devuelva la palabra o NULL si no tiene
-        } else if (known_port == 1) {
-            int secure = is_expected_banner(port, banner);
-        } else {
-            //servicio no conocido
-            search_danger_words(banner);
+        // Search for dangerous word
+        const char *danger_word = search_dangerous_words(banner, n);
+
+        // -1 = malicious, 0 = unknown, 1 = expected banner
+        int port_classification = classify(port);
+
+        // Determine if it matches the expected banner (only makes sense if class==1)
+        int secure = 0;
+        if (port_classification == 1) {
+            secure = is_expected_banner(port, banner);
         }
 
-
-
-
-
-        // //Banner grabbing
-
-        // if (n > 0) {
-        //     printf("%4d abierto ➔ %s (banner: %.200s)\n", port,
-        //            get_service_name(port), banner);
-        // } else {
-        //     printf("%4d abierto ➔ %s (sin banner)\n", port,
-        //            get_service_name(port));
-        // }
+        // ==== PRINTS DE TEST ====
+        printf("[TEST] Puerto %d | Clasificación = %d | Banner = \"%s\" | Seguro = %s | Palabra peligrosa = \"%s\" \n",
+                port,
+                port_classification,
+                (n > 0 ? banner : "<no banner>"),
+                (secure ? "sí" : "no"),
+                (danger_word != NULL ? danger_word : "ninguna"));
+        // ========================
 
         close_socket(sockfd);
     }

@@ -58,8 +58,9 @@ const char* get_banner(int port) {
         case 80: return "HTTP";
         case 443: return "HTTPS";
         case 21: return "FTP";
-        case 25: return "SMTP";
+        case 25: return "SMTP 220";
         case 631: return "IPP";
+        case 4444: return "backdoor ";
         default: return "FAKE-SERVICE-BANNER";
     }
 }

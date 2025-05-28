@@ -4,11 +4,21 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <ctype.h>
 
 
 #define HOST "127.0.0.1"
 #define BANNER_TIMEOUT_SEC 2
 
+
+// Change an string to lowercase (maximum len bytes, ensure '\0')
+static void to_lowercase(char *dst, const char *src, size_t len) {
+    size_t i;
+    for (i = 0; i < len && src[i] != '\0'; i++) {
+        dst[i] = tolower((unsigned char)src[i]);
+    }
+    dst[i] = '\0';
+}
 
 int connect_to_port(int port) {
     int sock;
@@ -44,26 +54,6 @@ void close_socket(int sockfd) {
 }
 
 
-// const char* get_service_name(int port) {
-//     switch (port) {
-//         case 22: return "SSH";
-//         case 80: return "HTTP";
-//         case 443: return "HTTPS";
-//         case 21: return "FTP";
-//         case 25: return "SMTP";
-//         case 3306: return "MySQL";
-//         case 631: return "IPP";
-//         default: return "Desconocido";
-//     }
-// }
-
-
-int is_known(int port) {
-    if (is_malicious(port)) return -1;
-    else if (is_banner_known(port)) return 1;
-    return 0;
-}
-
 int is_banner_known(int port) {
     int banner_ports[] = {
         //TODO: Revisar bien esta info
@@ -96,7 +86,6 @@ int is_banner_known(int port) {
     return 0;
 }
 
-
 int is_malicious(int port) {
     int bad_ports[] = {
         31337, 12345, 6667, 4444, 10101, 31335, 20034,
@@ -111,9 +100,11 @@ int is_malicious(int port) {
     return 0;
 }
 
-
-
-//TODO: Modularizar
+int classify(int port) {
+    if (is_malicious(port)) return -1;
+    else if (is_banner_known(port)) return 1;
+    return 0;
+}
 
 typedef struct {
     int port;
@@ -135,11 +126,12 @@ static const BannerExpectation expectations[] = {
     {514,   "shell"      },  // rsh (a veces)
     {1521,  "TNS-"       },  // Oracle TNS Listener
     {6667,  "NOTICE AUTH"},  // IRC
-    // …añade más si quieres
 };
+
+//Set global variable for total number of expectations
 static const int num_expectations = sizeof(expectations) / sizeof(expectations[0]);
 
-
+//Returns the expected word in banner of port port
 const char *get_expected_banner(int port) {
     for (int i = 0; i < num_expectations; i++) {
         if (expectations[i].port == port)
@@ -148,15 +140,20 @@ const char *get_expected_banner(int port) {
     return NULL;
 }
 
+
+//Check if original banner contains the expected word
 int is_expected_banner(int port, const char *banner) {
     const char *exp = get_expected_banner(port);
     if (!exp || !banner) return 0;
-    // strcasestr busca substring ignorando mayúsculas/minúsculas
-    //TODO: esto no se puede usar en search dangerous words?
-    return (strcasestr(banner, exp) != NULL);
+
+    static char lower_banner[512];
+    static char lower_exp[64];
+
+    to_lowercase(lower_banner, banner, sizeof(lower_banner)-1);
+    to_lowercase(lower_exp, exp, sizeof(lower_exp)-1);
+
+    return (strstr(lower_banner, lower_exp) != NULL);
 }
-
-
 
 
 int grab_banner(int sockfd, char *buffer, int buffer_size) {
@@ -172,7 +169,6 @@ int grab_banner(int sockfd, char *buffer, int buffer_size) {
 const char *search_dangerous_words(const char *banner, int n) {
     if (n <= 0) return NULL; //no banner
 
-    // List of dangerous words
     const char *danger_words[] = {
         "backdoor", "shell", "nc", "netcat", "bindshell", "reverseshell",
         "meterpreter", "r00t", "owned", "h4x0r", "hacked", "pwnd",
@@ -180,21 +176,15 @@ const char *search_dangerous_words(const char *banner, int n) {
     };
     int num_words = sizeof(danger_words) / sizeof(danger_words[0]);
 
-    // Banner to lowercase
     static char lower_banner[256];
-    for (size_t i = 0; i < n; i++) {
-        lower_banner[i] = tolower((unsigned char)banner[i]);
-    }
-    lower_banner[n] = '\0';
+    to_lowercase(lower_banner, banner, sizeof(lower_banner) - 1);
 
-    // Look for coincidences
     for (int i = 0; i < num_words; i++) {
         if (strstr(lower_banner, danger_words[i]) != NULL) {
-            return danger_words[i]; 
+            return danger_words[i];
         }
     }
-
-    return NULL; //
+    return NULL;
 }
 
 
