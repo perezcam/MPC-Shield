@@ -124,13 +124,13 @@ static int get_usb_mounts(char *devnodes[], char *mntpoints[]) {
     int devcount = 0;
     struct udev_list_entry *head = udev_enumerate_get_list_entry(en);
     struct udev_list_entry *entry;
-    udev_list_entry_foreach(entry, head) {
+    udev_list_entry_foreach (entry,head){
         if (devcount >= MAX_USBS) break;
         struct udev_device *dev = udev_device_new_from_syspath(
             udev, udev_list_entry_get_name(entry));
         const char *node = udev_device_get_devnode(dev);
         if (node && udev_device_get_parent_with_subsystem_devtype(
-                         dev, "usb", "usb_device")) {
+                        dev, "usb", "usb_device")) {
             devnodes[devcount++] = strdup(node);
         }
         udev_device_unref(dev);
@@ -139,13 +139,18 @@ static int get_usb_mounts(char *devnodes[], char *mntpoints[]) {
 
     int count = 0;
     for (int i = 0; i < devcount; i++) {
-        char *mnt = find_mount(devnodes[i]);
+        char *mnt = find_mount(devnodes[i]);  // strdup del mnt_dir
         if (mnt) {
-            mntpoints[count++] = mnt;  // strdup done in find_mount
+            mntpoints[count] = mnt;           // guardo punto de montaje
+            devnodes[count]  = devnodes[i];   // alineo el devnode con ese mnt
+            count++;
+        } else {
+            free(devnodes[i]);                // no lo necesito, libero
         }
     }
-    udev_unref(udev);
     return count;
+
+    udev_unref(udev);
 }
 
 
@@ -174,7 +179,7 @@ void *scanner_thread(void *arg) {
     struct udev_monitor *mon =
         udev_monitor_new_from_netlink(udev, "udev");
     udev_monitor_filter_add_match_subsystem_devtype(
-        mon, "block", "partition");
+        mon, "block", NULL);
     udev_monitor_enable_receiving(mon);
     int mon_fd = udev_monitor_get_fd(mon);
     struct pollfd pfd = { .fd = mon_fd, .events = POLLIN };
