@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <fcntl.h>  // for AT_FDCWD
 
+
 // Global mount-list state (protected by mount_mutex)
 static struct {
     char *devnode;
@@ -67,32 +68,58 @@ static void remove_mount_entry(const char *devnode) {
     pthread_mutex_unlock(&mount_mutex);
 }
 
+
+
 void mark_mount(const char *path) {
     printf("Marking %s",path);
-    unsigned long events_content = FAN_CLOSE_WRITE | FAN_MODIFY| FAN_ACCESS;
+    unsigned long events_content = FAN_CLOSE_WRITE | FAN_MODIFY| FAN_ACCESS;// | FAN_ATTRIB;
     unsigned long events_notify  = FAN_CREATE | FAN_DELETE | FAN_MOVED_FROM | FAN_MOVED_TO;
 
     // mark for content events
     if (fanotify_mark(
             g_fan_content_fd,
-            FAN_MARK_ADD | FAN_MARK_MOUNT,
+            FAN_MARK_ADD,
             events_content,
             AT_FDCWD,
             path) < 0
     ){
         fprintf(stderr, "mark_mount(content) failed for %s: %s\n", path, strerror(errno));
     }
-
+    
     // mark for notify events
     if (fanotify_mark(
-            g_fan_notify_fd,
-            FAN_MARK_ADD,
-            events_notify,
-            AT_FDCWD,
-            path) < 0
-    ) {
+        g_fan_notify_fd,
+        FAN_MARK_ADD,
+        events_notify,
+        AT_FDCWD,
+        path) < 0
+    ){
         fprintf(stderr, "mark_mount(notify) failed for %s: %s\n", path, strerror(errno));
     }
+}
+
+//callback function for nftw
+static int mark_cb(const char *fpath, const struct stat *sb,
+    int typeflag, struct FTW *ftwbuf)
+{
+    //Only process directories
+    if (typeflag == FTW_D) {
+    mark_mount(fpath);
+    fflush(stdout);
+    }
+    return 0;
+}
+
+// Recursively mark directories
+static void full_mark(const char *root)
+{
+    printf("Starting full scan-and-mark of %s\n", root);
+    fflush(stdout);
+
+    nftw(root, mark_cb, 64, FTW_PHYS | FTW_MOUNT);
+
+    printf("Full scan-and-mark of %s finished.\n", root);
+    fflush(stdout);
 }
 
 static char *find_mount(const char *devnode) {
@@ -159,12 +186,12 @@ void *scanner_thread(void *arg) {
     /* 1) Initial enumeration of existing USB mounts */
     char *devnodes[MAX_USBS], *mntpoints[MAX_USBS];
     int n = get_usb_mounts(devnodes, mntpoints);
-    if (n < 0) {
+    if (n < 0){
         fprintf(stderr, "Error enumerating mounts");
         return NULL;
     }
     for (int i = 0; i < n; i++) {
-        mark_mount(mntpoints[i]);
+        full_mark(mntpoints[i]);
         add_mount_entry(devnodes[i], mntpoints[i]);
         free(mntpoints[i]);
         free(devnodes[i]);
@@ -195,16 +222,14 @@ void *scanner_thread(void *arg) {
             struct udev_device *dev =
                 udev_monitor_receive_device(mon);
             if (!dev) continue;
-            const char *action =
-                udev_device_get_action(dev);
-            const char *devnode =
-                udev_device_get_devnode(dev);
+            const char *action  = udev_device_get_action(dev);
+            const char *devnode = udev_device_get_devnode(dev);
             if (action && devnode) {
                 if (strcmp(action, "add") == 0) {
                     sleep(1);  // wait for mount
                     char *mnt = find_mount(devnode);
                     if (mnt) {
-                        mark_mount(mnt);
+                        full_mark(mnt);
                         add_mount_entry(devnode, mnt);
                         free(mnt);
 
@@ -219,3 +244,4 @@ void *scanner_thread(void *arg) {
     udev_unref(udev);
     return NULL;
 }
+
