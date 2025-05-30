@@ -1,20 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 
 #include "scanner_utils.h"
-
-
+#include "models.h"
 
 #define START_PORT 1
 #define END_PORT 6000
+#define MAX_PORTS (END_PORT - START_PORT + 1)
 #define NUM_THREADS 100
 
-int next_port = START_PORT;
-pthread_mutex_t mutex;
+static int next_port = START_PORT;
+static int output_index = 0;
+static ScanOutput *output = NULL;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
-void *scan(void *arg) {
+static void *scan_thread(void *arg) {
     while (1) {
         pthread_mutex_lock(&mutex);
         if (next_port > END_PORT) {
@@ -23,59 +26,63 @@ void *scan(void *arg) {
         }
         int port = next_port++;
         pthread_mutex_unlock(&mutex);
-    
-        int sockfd = connect_to_port(port);
-        if (sockfd < 0) {
-            // Port closed or filtered (no banner, no danger)
-            continue;
-        }
 
-        // Grab port banner if it has one
-        char banner[256];
+        int sockfd = connect_to_port(port);
+        if (sockfd < 0) continue;
+
+        char banner[256] = {0};
         int n = grab_banner(sockfd, banner, sizeof(banner) - 1);
 
-        // Search for dangerous word
-        const char *danger_word = search_dangerous_words(banner, n);
+        const char *found_word = search_dangerous_words(banner, n);
+        int port_class = classify(port);
+        int secure = (port_class == 1) ? is_expected_banner(port, banner) : 0;
 
-        // -1 = malicious, 0 = unknown, 1 = expected banner
-        int port_classification = classify(port);
+        // Prepare output
+        ScanOutput entry;
+        entry.port = port;
+        entry.classification = port_class;
+        entry.banner = strdup((n > 0) ? banner : "<no banner>");
+        entry.dangerous_word = strdup(
+            (found_word != NULL) ? found_word : "Sin palabra peligrosa detectada"
+        );
+        entry.security_level = secure;  // 0 or 1
 
-        // Determine if it matches the expected banner (only makes sense if class==1)
-        int secure = 0;
-        if (port_classification == 1) {
-            secure = is_expected_banner(port, banner);
-        }
+        pthread_mutex_lock(&mutex);
 
-        // ==== PRINTS DE TEST ====
-        printf("[TEST] Puerto %d | Clasificación = %d | Banner = \"%s\" | Seguro = %s | Palabra peligrosa = \"%s\" \n",
-                port,
-                port_classification,
-                (n > 0 ? banner : "<no banner>"),
-                (secure ? "sí" : "no"),
-                (danger_word != NULL ? danger_word : "ninguna"));
-        // ========================
+        output[output_index] = entry;
+        output_index++;
+
+        pthread_mutex_unlock(&mutex);
 
         close_socket(sockfd);
     }
-
     return NULL;
 }
 
 
-int main() {
-    pthread_t port_threads[NUM_THREADS];
-    pthread_mutex_init(&mutex, NULL);
+ScanResult scan_ports(void) {
+    
+    output = malloc(sizeof(ScanOutput) * MAX_PORTS);
+    if (!output) {
+        //TODO: MANEJO DE ERRORES
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    next_port = START_PORT;
+    output_index = 0;
 
 
+    pthread_t threads[NUM_THREADS];
     for (int i = 0; i < NUM_THREADS; i++) {
-        pthread_create(&port_threads[i], NULL, scan, NULL);
+        pthread_create(&threads[i], NULL, scan_thread, NULL);
+    }
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);
     }
 
-
-    for (int i = 0; i < NUM_THREADS; i++) {
-        pthread_join(port_threads[i], NULL);
-    }
-
-    pthread_mutex_destroy(&mutex);
-    return 0;
+    // Prepare result
+    ScanResult result;
+    result.data = output;
+    result.size = output_index;
+    return result;
 }

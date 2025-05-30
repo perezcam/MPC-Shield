@@ -1,5 +1,5 @@
-#ifndef SCANNER_H
-#define SCANNER_H
+#ifndef SCANNER_UTILS_H
+#define SCANNER_UTILS_H
 
 // ———— Connection & Socket Management ————
 /**
@@ -48,15 +48,6 @@ int grab_banner(int sockfd, char *buffer, int buffer_size);
  */
 const char *search_dangerous_words(const char *banner, int n);
 
-// ———— Expected Banner Validation ————
-/**
- * Associates a port with its expected banner substring.
- */
-typedef struct {
-    int         port;
-    const char *expected;
-} BannerExpectation;
-
 /**
  * Returns the expected banner substring for a given port, or NULL if undefined.
  */
@@ -70,4 +61,4 @@ const char *get_expected_banner(int port);
  */
 int is_expected_banner(int port, const char *banner);
 
-#endif /* SCANNER_H */
+#endif /* SCANNER_UTILS_H */
