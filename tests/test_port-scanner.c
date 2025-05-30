@@ -1,4 +1,4 @@
-#include "scanner_utils.h"
+#include "test_scanner_utils.h"
 #include <unistd.h>
 #include <stdio.h>      
 #include <stdlib.h>     
@@ -7,10 +7,10 @@
 
 
 
-#define NUM_PORTS 5
+#define NUM_PORTS 7
 
 int main() {
-    int ports[NUM_PORTS] = {21, 22, 80, 4, 5};
+    int ports[NUM_PORTS] = {21, 22, 4, 5, 443, 25, 4444};
     int sockets[NUM_PORTS];
 
     for (int i = 0; i < NUM_PORTS; i++) {
@@ -18,7 +18,23 @@ int main() {
         if (sockets[i] == -1) {
             //TODO: ERROR HANDLING
             printf("Error al abrir el puerto %d\n", ports[i]);
+            
             return -1;
+        }
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            //TODO: Error handling
+            perror("fork");
+            continue;
+        } else if (pid == 0) {
+            //Banner server
+            int client = send_banner(sockets[i], ports[i]);
+            if (client < 0) {
+                //TODO: error creando el cliente
+            } 
+
+            exit(0);  
         }
     }
 
