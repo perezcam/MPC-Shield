@@ -7,6 +7,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <openssl/sha.h>      
+#include <fcntl.h>             //fstat & O_PATH
+#include <sys/stat.h>         
+#include "shared.h"    
+#include <string.h>       
 
 void *monitor_thread(void *arg) {
     (void)arg;
@@ -31,7 +36,7 @@ void *monitor_thread(void *arg) {
             while (ptr < len) {
                 struct fanotify_event_metadata *md = (void *)(buf + ptr);
                 if (md->event_len < sizeof(*md) || ptr + md->event_len > len) break;
-                event_t ev = { .mask = md->mask, .pid = md->pid };
+                EventInfo ev = { .mask = md->mask, .proc.pid = md->pid };
 
                 // check for create, delete, move notifications (no content)
                 if (fds[i].fd == g_fan_notify_fd) {
@@ -42,12 +47,12 @@ void *monitor_thread(void *arg) {
                     // metadata events can report the name when FAN_REPORT_NAME is enabled
                     // the kernel appends a null-terminated filename after the metadata header
                     char *name = (char *)md + sizeof(struct fanotify_event_metadata);
-                    snprintf(ev.filepath, PATH_MAX, "%s", name);
+                    snprintf(ev.file.path, PATH_MAX, "%s", name);
                     // on directory creation or move-to, mark the new directory
                     if (md->mask & (FAN_CREATE | FAN_MOVED_TO)) {
                         struct stat st;
-                        if (stat(ev.filepath, &st) == 0 && S_ISDIR(st.st_mode)) {
-                            mark_mount(ev.filepath);
+                        if (stat(ev.file.path, &st) == 0 && S_ISDIR(st.st_mode)) {
+                            mark_mount(ev.file.path);
                         }
                     }
                     push_event(ev);
@@ -56,7 +61,7 @@ void *monitor_thread(void *arg) {
                 else {
                     char path[PATH_MAX];
                     get_path_from_fd(md->fd, path, sizeof(path));
-                    strncpy(ev.filepath, path, PATH_MAX);
+                    strncpy(ev.file.path, path, PATH_MAX);
                     close(md->fd);
                     push_event(ev);
                 }

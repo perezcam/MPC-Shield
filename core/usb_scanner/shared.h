@@ -2,28 +2,46 @@
 #define SHARED_H
 
 #define _GNU_SOURCE
-
 #include <limits.h>
 #include <stdint.h>
 #include <sys/fanotify.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <openssl/sha.h>          // crypto SHA‑256
+#include <sys/stat.h>             // permisos & atributos
 
+#define CMDLINE_MAX 4096         
 #define QUEUE_SIZE   1024
 #define NUM_WORKERS   10
 #define MAX_USBS      64
 
-typedef struct {
-    uint64_t mask;
-    pid_t pid;
-    char filepath[PATH_MAX];
-} event_t;
+typedef struct {                
+    pid_t  pid;
+    uid_t  uid;
+    gid_t  gid;
+    char   exe[PATH_MAX];
+    char   cmdline[CMDLINE_MAX];
+    pid_t  ppid;
+} ProcessInfo;
 
-void push_event(event_t ev);
-void pop_event(event_t *ev);
+typedef struct {                  
+    char   path[PATH_MAX];
+    unsigned char sha256[SHA256_DIGEST_LENGTH];
+    mode_t mode;
+    struct timespec mtime;
+} FileInfo;
+
+typedef struct {               
+    uint64_t mask;            // FAN_* mask               
+    ProcessInfo proc;         // quién lo hizo            
+    FileInfo    file;         // qué archivo tocó         
+} EventInfo;
+
+void push_event(EventInfo ev);
+void pop_event(EventInfo *ev);
 
 /* scanner.c exports */
-void mark_mount(const char *root);     // Changed: mark entire mount instead of recursive
+static void full_mark(const char *root);     // Changed: mark entire mount instead of recursive
 int  get_current_mounts(char *mounts[], int max);
 
 /* report.c exports */
