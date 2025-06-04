@@ -84,7 +84,7 @@ int main(void) {
     // 6) Infinite periodic reporting
     while (1) {
         sleep(2);
-        printf("\n=== USB mounts (periodic) ===\n");
+        // printf("\n=== USB mounts (periodic) ===\n");
         report_current_mounts();
     }
     // 6) Shutdown scanner_thread cleanly

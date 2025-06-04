@@ -72,7 +72,7 @@ static void remove_mount_entry(const char *devnode) {
 
 void mark_mount(const char *path) {
     printf("Marking %s",path);
-    unsigned long events_content = FAN_CLOSE_WRITE | FAN_MODIFY| FAN_ACCESS;// | FAN_ATTRIB;
+    unsigned long events_content = FAN_CLOSE_WRITE | FAN_MODIFY| FAN_ACCESS;
     unsigned long events_notify  = FAN_CREATE | FAN_DELETE | FAN_MOVED_FROM | FAN_MOVED_TO;
 
     // mark for content events
