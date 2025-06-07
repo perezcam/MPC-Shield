@@ -1,24 +1,31 @@
+# interface/gui/Makefile
+
+CC       := gcc
+PKG      := pkg-config
+
+# Incluir headers de core y de utils/port-scanner (models.h)
+CORE_INC := -I../../core/port-scanner \
+            -I../../utils/port-scanner
+
+# Flags de compilación: GTK4 + pthreads + rutas de include
+CFLAGS   := $(shell $(PKG) --cflags gtk4) -pthread $(CORE_INC)
+
+# Flags de enlace: GTK4 + pthreads
+LIBS     := $(shell $(PKG) --libs   gtk4) -pthread
+
+# Librería estática del core
+CORE_LIB := ../../core/port-scanner/libportscanner.a
+
+SRC      := src/main.c
+EXEC     := gui-ports
+
 .PHONY: all run clean
-
-# Herramientas
-CC      := gcc
-PKG     := pkg-config
-
-# Flags de compilación y enlace para GTK4
-CFLAGS  := $(shell $(PKG) --cflags gtk4)
-LIBS    := $(shell $(PKG) --libs   gtk4)
-
-# Fuente y ejecutable
-SRC     := src/main.c
-EXEC    := gui-minimal
 
 all: $(EXEC)
 
-# Compilar main.c en un binario standalone
-$(EXEC): $(SRC)
-	$(CC) $(CFLAGS) $< -o $@ $(LIBS)
+$(EXEC): $(SRC) $(CORE_LIB)
+	$(CC) $(CFLAGS) $< -o $@ $(LIBS) $(CORE_LIB)
 
-# Ejecutar directamente
 run: $(EXEC)
 	./$(EXEC)
 

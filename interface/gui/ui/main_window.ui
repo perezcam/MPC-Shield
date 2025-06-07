@@ -9,70 +9,52 @@
     <property name="default-height">600</property>
 
     <child>
-      <!-- Notebook con tres pestañas -->
+      <!-- Notebook con tres páginas -->
       <object class="GtkNotebook" id="notebook_main">
         <property name="tab-pos">top</property>
 
-        <!-- Página “Dispositivos” (contenido) -->
+        <!-- Página 1: Dispositivos -->
         <child>
-          <object class="GtkBox" id="page_devices">
-            <property name="orientation">vertical</property>
-            <property name="spacing">10</property>
+          <object class="GtkScrolledWindow" id="scrolled_devices">
+            <property name="hexpand">True</property>
+            <property name="vexpand">True</property>
             <child>
-              <object class="GtkLabel">
-                <property name="label">Escaneo de Dispositivos</property>
-                <property name="halign">center</property>
-                <property name="margin-top">20</property>
-              </object>
+              <object class="GtkTreeView" id="tree_devices"/>
             </child>
-            <!-- Aquí irá tu GtkTreeView de dispositivos -->
           </object>
         </child>
-        <!-- Rótulo de la pestaña “Dispositivos” -->
         <child type="tab">
           <object class="GtkLabel">
             <property name="label">Dispositivos</property>
           </object>
         </child>
 
-        <!-- Página “Puertos” (contenido) -->
+        <!-- Página 2: Puertos -->
         <child>
-          <object class="GtkBox" id="page_ports">
-            <property name="orientation">vertical</property>
-            <property name="spacing">10</property>
+          <object class="GtkScrolledWindow" id="scrolled_ports">
+            <property name="hexpand">True</property>
+            <property name="vexpand">True</property>
             <child>
-              <object class="GtkLabel">
-                <property name="label">Escaneo de Puertos</property>
-                <property name="halign">center</property>
-                <property name="margin-top">20</property>
-              </object>
+              <object class="GtkTreeView" id="tree_ports"/>
             </child>
-            <!-- Aquí irá tu GtkTreeView de puertos -->
           </object>
         </child>
-        <!-- Rótulo de la pestaña “Puertos” -->
         <child type="tab">
           <object class="GtkLabel">
             <property name="label">Puertos</property>
           </object>
         </child>
 
-        <!-- Página “Procesos” (contenido) -->
+        <!-- Página 3: Procesos -->
         <child>
-          <object class="GtkBox" id="page_processes">
-            <property name="orientation">vertical</property>
-            <property name="spacing">10</property>
+          <object class="GtkScrolledWindow" id="scrolled_processes">
+            <property name="hexpand">True</property>
+            <property name="vexpand">True</property>
             <child>
-              <object class="GtkLabel">
-                <property name="label">Escaneo de Procesos</property>
-                <property name="halign">center</property>
-                <property name="margin-top">20</property>
-              </object>
+              <object class="GtkTreeView" id="tree_processes"/>
             </child>
-            <!-- Aquí irá tu GtkTreeView de procesos -->
           </object>
         </child>
-        <!-- Rótulo de la pestaña “Procesos” -->
         <child type="tab">
           <object class="GtkLabel">
             <property name="label">Procesos</property>

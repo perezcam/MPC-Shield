@@ -5,6 +5,7 @@
 
 #include "scanner_utils.h"
 #include "models.h"
+#include "scanner.h"
 
 #define START_PORT 1
 #define END_PORT 6000
@@ -35,17 +36,21 @@ static void *scan_thread(void *arg) {
 
         const char *found_word = search_dangerous_words(banner, n);
         int port_class = classify(port);
-        int secure = (port_class == 1) ? is_expected_banner(port, banner) : 0;
+        //secure: 0: warning, 1: ok, -1: critical 
+        int secure = (port_class == 1)? is_expected_banner(port, banner) : 
+                    (found_word != NULL)? -1 : 
+                    (port_class == -1)? 0 : 1;
 
         // Prepare output
         ScanOutput entry;
         entry.port = port;
-        entry.classification = port_class;
+        entry.classification = strdup((port_class == -1)? "Suspicious" : 
+                                    (port_class == 1)? "Service associated" : "Unknown");
         entry.banner = strdup((n > 0) ? banner : "<no banner>");
-        entry.dangerous_word = strdup(
-            (found_word != NULL) ? found_word : "Sin palabra peligrosa detectada"
-        );
-        entry.security_level = secure;  // 0 or 1
+        entry.dangerous_word = strdup((found_word != NULL) ? found_word : "Sin palabra peligrosa detectada");
+        entry.security_level = strdup((secure == 0)? "warning" :
+                                    (secure == -1)? "critical" : "ok");
+
 
         pthread_mutex_lock(&mutex);
 
@@ -85,4 +90,27 @@ ScanResult scan_ports(void) {
     result.data = output;
     result.size = output_index;
     return result;
+}
+
+void free_result(ScanResult *res)
+{
+    if (!res || !res->data)
+    // 1) Liberar las cadenas duplicadas en cada ScanOutput
+        return;
+
+    // 1) Liberar las cadenas duplicadas en cada ScanOutput
+    for (int i = 0; i < res->size; i++) {
+        // strdup() devolvió punteros a memoria heap para banner y dangerous_word
+        free((char*)res->data[i].banner);
+        free((char*)res->data[i].dangerous_word);
+        free((char*)res->data[i].security_level);
+        free((char*)res->data[i].classification);
+    }
+
+    // 2) Liberar el array de ScanOutput
+    free(res->data);
+
+    // 3) Evitar dangling pointers
+    res->data = NULL;
+    res->size = 0;
 }
