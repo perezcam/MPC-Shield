@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+
+  <!-- Ventana principal -->
+  <object class="GtkApplicationWindow" id="main_window">
+    <property name="title">MatCom Guard</property>
+    <property name="default-width">800</property>
+    <property name="default-height">600</property>
+
+    <child>
+      <!-- Notebook con tres pestañas -->
+      <object class="GtkNotebook" id="notebook_main">
+        <property name="tab-pos">top</property>
+
+        <!-- Página “Dispositivos” (contenido) -->
+        <child>
+          <object class="GtkBox" id="page_devices">
+            <property name="orientation">vertical</property>
+            <property name="spacing">10</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Escaneo de Dispositivos</property>
+                <property name="halign">center</property>
+                <property name="margin-top">20</property>
+              </object>
+            </child>
+            <!-- Aquí irá tu GtkTreeView de dispositivos -->
+          </object>
+        </child>
+        <!-- Rótulo de la pestaña “Dispositivos” -->
+        <child type="tab">
+          <object class="GtkLabel">
+            <property name="label">Dispositivos</property>
+          </object>
+        </child>
+
+        <!-- Página “Puertos” (contenido) -->
+        <child>
+          <object class="GtkBox" id="page_ports">
+            <property name="orientation">vertical</property>
+            <property name="spacing">10</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Escaneo de Puertos</property>
+                <property name="halign">center</property>
+                <property name="margin-top">20</property>
+              </object>
+            </child>
+            <!-- Aquí irá tu GtkTreeView de puertos -->
+          </object>
+        </child>
+        <!-- Rótulo de la pestaña “Puertos” -->
+        <child type="tab">
+          <object class="GtkLabel">
+            <property name="label">Puertos</property>
+          </object>
+        </child>
+
+        <!-- Página “Procesos” (contenido) -->
+        <child>
+          <object class="GtkBox" id="page_processes">
+            <property name="orientation">vertical</property>
+            <property name="spacing">10</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Escaneo de Procesos</property>
+                <property name="halign">center</property>
+                <property name="margin-top">20</property>
+              </object>
+            </child>
+            <!-- Aquí irá tu GtkTreeView de procesos -->
+          </object>
+        </child>
+        <!-- Rótulo de la pestaña “Procesos” -->
+        <child type="tab">
+          <object class="GtkLabel">
+            <property name="label">Procesos</property>
+          </object>
+        </child>
+
+      </object>
+    </child>
+  </object>
+</interface>

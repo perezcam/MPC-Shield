@@ -3,6 +3,7 @@
         "stdio.h": "c",
         "stdint.h": "c",
         "monitor.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "gtk.h": "c"
     }
 }
