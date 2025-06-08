@@ -16,6 +16,10 @@
         "miDebuggerPath": "/usr/bin/gdb",
         "preLaunchTask": "build"
       }
-    ]
+    ],
+    "files.associations": {
+      "compare": "c",
+      "cerrno": "c"
+    }
   }
   

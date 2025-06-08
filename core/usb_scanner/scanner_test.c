@@ -1,6 +1,5 @@
 #define _GNU_SOURCE
 // scanner_test.c
-// Test harness for scanner.c using globals from shared.h
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,86 +10,98 @@
 #include <sys/fanotify.h>
 #include <fcntl.h>
 
-#include "shared.h"  // shared.h should declare:
-int g_fan_content_fd;
-int g_fan_notify_fd;
+#include "shared.h"  // Aquí están los prototipos y los extern de las globals
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 
-// Core scanner interfaces
-extern void *scanner_thread(void *arg);
-extern int get_current_mounts(char *mounts[], int max);
-extern void mark_mount(const char *path);
-extern void report_current_mounts(void);
-
 int main(void) {
-    // 1) Initialize fanotify fds (declared in shared.h)
+    // 1) Initialize fanotify fds (g_fan_content_fd, g_fan_notify_fd vienen de shared.c)
     g_fan_content_fd = fanotify_init(
-        FAN_CLASS_CONTENT, O_RDONLY | O_CLOEXEC
-        | FAN_NONBLOCK |O_LARGEFILE
+        FAN_CLASS_CONTENT, O_RDONLY | O_CLOEXEC | FAN_NONBLOCK | O_LARGEFILE
     );
     if (g_fan_content_fd < 0) {
         perror("fanotify_init content");
         return EXIT_FAILURE;
     }
-    // Use NOTIF class for metadata (create/delete) events
-    g_fan_notify_fd = fanotify_init(FAN_CLASS_NOTIF | FAN_REPORT_FID, O_RDONLY | O_CLOEXEC);
+    g_fan_notify_fd = fanotify_init(
+        FAN_CLASS_NOTIF | FAN_REPORT_FID, O_RDONLY | O_CLOEXEC
+    );
     if (g_fan_notify_fd < 0) {
         perror("fanotify_init notify");
         close(g_fan_content_fd);
         return EXIT_FAILURE;
     }
 
-    // 2) Launch scanner thread
-    pthread_t tid;
-    if (pthread_create(&tid, NULL, scanner_thread, NULL) != 0) {
+    // 2) Launch scanner_thread, monitor_thread, worker_thread(s)
+    pthread_t scan_tid;
+    if (pthread_create(&scan_tid, NULL, scanner_thread, NULL) != 0) {
         perror("pthread_create scanner_thread");
         close(g_fan_content_fd);
         close(g_fan_notify_fd);
         return EXIT_FAILURE;
     }
 
-    // 3) Give scanner_thread time to enumerate mounts
+    pthread_t mon_tid;
+    if (pthread_create(&mon_tid, NULL, monitor_thread, NULL) != 0) {
+        perror("pthread_create monitor_thread");
+        pthread_cancel(scan_tid);
+        pthread_join(scan_tid, NULL);
+        close(g_fan_content_fd);
+        close(g_fan_notify_fd);
+        return EXIT_FAILURE;
+    }
+
+    #define NUM_WORKERS 2
+    pthread_t workers[NUM_WORKERS];
+    for (int i = 0; i < NUM_WORKERS; i++) {
+        if (pthread_create(&workers[i], NULL, worker_thread, NULL) != 0) {
+            perror("pthread_create worker_thread");
+        }
+    }
+
+    // 3) Pausa corta para que scanner_thread haga su trabajo
     sleep(2);
     printf("\n=== Initial USB mounts ===\n");
     report_current_mounts();
 
-    // 4) Test mark_mount against a temporary directory (mount a tmpfs if testing MOUNT flag)
+    // 4) Test mark_mount en un tmpdir
     char tmpdir[] = "/tmp/usbtestXXXXXX";
     char *mount_dir = mkdtemp(tmpdir);
     if (!mount_dir) {
         perror("mkdtemp");
     } else {
         printf("\n=== Testing mark_mount on %s ===\n", mount_dir);
-        // If testing FAN_MARK_MOUNT, mount a tmpfs here:
-        // sudo mount -t tmpfs tmpfs %s
         mark_mount(mount_dir);
-        printf("Creating a file under %s to trigger events\n", mount_dir);
+
         char filepath[PATH_MAX];
         snprintf(filepath, sizeof(filepath), "%s/testfile.txt", mount_dir);
         FILE *f = fopen(filepath, "w");
         if (f) {
             fputs("hello world\n", f);
             fclose(f);
-            sleep(1); // allow event to be processed
+            sleep(1);  // <— dar tiempo a que monitor+worker detecten el CREATE
         } else {
             perror("fopen testfile");
         }
     }
 
-
-    // 6) Infinite periodic reporting
+    // 5) Loop infinito de report_current_mounts (igual que antes)
     while (1) {
         sleep(2);
-        // printf("\n=== USB mounts (periodic) ===\n");
         report_current_mounts();
     }
-    // 6) Shutdown scanner_thread cleanly
-    pthread_cancel(tid);
-    pthread_join(tid, NULL);
 
+    // 6) (teórico) cleanup
+    pthread_cancel(scan_tid);
+    pthread_cancel(mon_tid);
+    for (int i = 0; i < NUM_WORKERS; i++) {
+        pthread_cancel(workers[i]);
+        pthread_join(workers[i], NULL);
+    }
+    pthread_join(scan_tid, NULL);
+    pthread_join(mon_tid, NULL);
     close(g_fan_content_fd);
     close(g_fan_notify_fd);
     return EXIT_SUCCESS;

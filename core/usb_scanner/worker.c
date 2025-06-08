@@ -5,6 +5,7 @@
 #include <string.h>
 #include <openssl/sha.h>
 #include <asm-generic/fcntl.h>
+#include <errno.h>
 
 
 /* Provided by report.c */
@@ -58,11 +59,36 @@ static int sha256_file(const char *path, unsigned char out[SHA256_DIGEST_LENGTH]
 }
 
 /* Helpers to resolve paths */
-static void get_path_from_fd(int fd, char *out, size_t sz) {
-    char link[64];
-    snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
-    ssize_t len = readlink(link, out, sz-1);
-    out[(len>0)?len:0] = '\0';
+int get_path_from_fd(int fd, char *buf, size_t bufsiz) {
+    char linkpath[PATH_MAX];
+    ssize_t len;
+
+    if (buf == NULL || bufsiz == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    // Construimos la ruta "/proc/self/fd/<fd>"
+    int n = snprintf(linkpath, sizeof(linkpath), "/proc/self/fd/%d", fd);
+    if (n < 0 || (size_t)n >= sizeof(linkpath)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    // Leemos el enlace simbólico; readlink no añade '\0'
+    len = readlink(linkpath, buf, bufsiz - 1);
+    if (len < 0) {
+        // errno ya está seteado por readlink
+        return -1;
+    }
+
+    // Aseguramos un terminador nulo
+    if ((size_t)len >= bufsiz) {
+        buf[bufsiz - 1] = '\0';
+    } else {
+        buf[len] = '\0';
+    }
+    return 0;
 }
 
 static void get_exe_path(pid_t pid, char *out, size_t sz) {
