@@ -41,19 +41,12 @@ static gboolean update_ports (gpointer user_data)
     return G_SOURCE_CONTINUE;
 }
 
-static void on_activate (GtkApplication *app, gpointer data)
-{
-    // 1. Cargar la UI
-    GtkBuilder *builder = gtk_builder_new_from_file("ui/main_window.ui");
-    GtkWindow  *window  = GTK_WINDOW(
-        gtk_builder_get_object(builder, "main_window"));
 
-    // 2. Asociar la ventana a la aplicación
-    gtk_window_set_application(window, app);
+static void prepare_ports_treeview(GtkBuilder *builder) {
 
     // 3. Recuperar el TreeView de puertos
-    GtkTreeView *tv_ports =
-        GTK_TREE_VIEW(gtk_builder_get_object(builder, "tree_ports"));
+    GtkTreeView *tv_ports = GTK_TREE_VIEW(gtk_builder_get_object(builder, "tree_ports"));
+
 
     // 4. Crear el ListStore con todos los tipos de columna
     GtkListStore *store_ports = gtk_list_store_new(
@@ -65,6 +58,7 @@ static void on_activate (GtkApplication *app, gpointer data)
         G_TYPE_STRING  // COL_SECURITY_LEVEL
     );
 
+
     // 5. Insertar cada columna visual en el TreeView
     const char *titles[N_COLUMNS] = {
         "Puerto",
@@ -73,6 +67,7 @@ static void on_activate (GtkApplication *app, gpointer data)
         "Palabra Peligrosa",
         "Nivel Seguridad"
     };
+
     // Bucle que inserta dinámicamente cada columna en el TreeView
     for (int i = 0; i < N_COLUMNS; i++) {
         GtkCellRenderer *renderer = gtk_cell_renderer_text_new();
@@ -86,12 +81,36 @@ static void on_activate (GtkApplication *app, gpointer data)
         );
     }
 
+
     // 6. Asignar el modelo al TreeView
     gtk_tree_view_set_model(tv_ports, GTK_TREE_MODEL(store_ports));
+
+
 
     // 7. Llamar a update_ports() ahora y cada 5 segundos
     update_ports(store_ports);
     g_timeout_add_seconds(5, update_ports, store_ports);
+
+}
+
+
+static void on_activate (GtkApplication *app, gpointer data)
+{
+    // 1. Cargar la UI
+    GtkBuilder *builder = gtk_builder_new_from_file("ui/main_window.ui");
+    GtkWindow  *window  = GTK_WINDOW(
+        gtk_builder_get_object(builder, "main_window"));
+
+    // 2. Asociar la ventana a la aplicación
+    gtk_window_set_application(window, app);
+
+
+    //Recuperar el TreeView de puertos
+    prepare_ports_treeview(builder);
+    
+    //TODO: Aqui estarian las otras funciones que preparan las demas cosas 
+    //prepare_devices_treeview() y prepare_processes_treeview()
+
 
     // 8. Mostrar la ventana
     gtk_window_present(window);
