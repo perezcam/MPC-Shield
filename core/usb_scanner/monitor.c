@@ -7,12 +7,19 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <openssl/sha.h>      
-#include <fcntl.h>             //fstat & O_PATH
-#include <sys/stat.h>         
-#include "shared.h"    
-#include <string.h>       
+#include <openssl/sha.h>
+#include <fcntl.h>
+#include <limits.h>
 
+/**
+ * monitor_thread:
+ *   - Listens on both fanotify descriptors (notify and content).
+ *   - Filters and processes events: create/delete/move on notify FD,
+ *     open/modify/close_write on content FD.
+ *   - Retrieves file names (requires FAN_REPORT_NAME) and resolves
+ *     paths from FDs.
+ *   - Pushes events into the shared queue and logs debug info.
+ */
 void *monitor_thread(void *arg) {
     (void)arg;
     struct pollfd fds[2] = {
@@ -29,26 +36,36 @@ void *monitor_thread(void *arg) {
             break;
         }
         for (int i = 0; i < 2; i++) {
-            if (!(fds[i].revents & POLLIN)) continue;
+            if (!(fds[i].revents & POLLIN))
+                continue;
             ssize_t len = read(fds[i].fd, buf, sizeof(buf));
-            if (len <= 0) continue;
+            if (len <= 0)
+                continue;
+
             off_t ptr = 0;
             while (ptr < len) {
                 struct fanotify_event_metadata *md = (void *)(buf + ptr);
-                if (md->event_len < sizeof(*md) || ptr + md->event_len > len) break;
+                /* Validate metadata length and version */
+                if (md->event_len < sizeof(*md) ||
+                    md->vers != FANOTIFY_METADATA_VERSION) {
+                    ptr += md->event_len;
+                    continue;
+                }
+
                 EventInfo ev = { .mask = md->mask, .proc.pid = md->pid };
 
-                // check for create, delete, move notifications (no content)
                 if (fds[i].fd == g_fan_notify_fd) {
-                    if (!(md->mask & (FAN_CREATE | FAN_DELETE | FAN_MOVED_FROM | FAN_MOVED_TO))) {
+                    /* Notify FD: handle create/delete/move events */
+                    if (!(md->mask & (FAN_CREATE | FAN_DELETE |
+                                      FAN_MOVED_FROM | FAN_MOVED_TO))) {
                         ptr += md->event_len;
                         continue;
                     }
-                    // metadata events can report the name when FAN_REPORT_NAME is enabled
-                    // the kernel appends a null-terminated filename after the metadata header
+                    /* Get filename (requires FAN_REPORT_NAME) */
                     char *name = (char *)md + sizeof(struct fanotify_event_metadata);
                     snprintf(ev.file.path, PATH_MAX, "%s", name);
-                    // on directory creation or move-to, mark the new directory
+
+                    /* Auto-mark new directories */
                     if (md->mask & (FAN_CREATE | FAN_MOVED_TO)) {
                         struct stat st;
                         if (stat(ev.file.path, &st) == 0 && S_ISDIR(st.st_mode)) {
@@ -56,15 +73,29 @@ void *monitor_thread(void *arg) {
                         }
                     }
                     push_event(ev);
-                } 
-                //else ckeck for content events (modifications)
-                else {
+                } else {
+                    /* Content FD: handle open/modify/close_write */
+                    if (!(md->mask & (FAN_OPEN | FAN_MODIFY |
+                                      FAN_CLOSE_WRITE))) {
+                        close(md->fd);
+                        ptr += md->event_len;
+                        continue;
+                    }
+                    /* Resolve path from FD */
                     char path[PATH_MAX];
                     get_path_from_fd(md->fd, path, sizeof(path));
                     strncpy(ev.file.path, path, PATH_MAX);
                     close(md->fd);
                     push_event(ev);
                 }
+
+                /* Debug logging */
+                fprintf(stderr, "[DEBUG] fd=%d mask=0x%llx path=%s\n",
+                        md->fd,
+                        (unsigned long long)md->mask,
+                        ev.file.path);
+                fflush(stderr);
+
                 ptr += md->event_len;
             }
         }

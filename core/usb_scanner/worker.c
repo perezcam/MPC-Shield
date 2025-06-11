@@ -9,7 +9,7 @@
 
 
 /* Provided by report.c */
-void report_file_modification(const char *filepath, uint64_t mask, pid_t        pid);
+void report_file_modification(const char *filepath, uint64_t mask, pid_t pid);
 void report_suspicious(pid_t pid, const char *exe_path);
 
 /*Helpers to receive and validate Process Info*/
@@ -149,7 +149,7 @@ void *worker_thread(void *arg) {
 
         /* Validacion de Legitimidad */
         int bad_hash = (!S_ISDIR(st.st_mode) && is_known_malware(ev.file.sha256));
-        int bad_proc = !is_legit(ev.proc.exe);
+        int bad_proc = is_legit(ev.proc.exe); //cambie legitimidad a negado marca lo ok
 
         if (bad_hash || bad_proc) {
             report_suspicious(ev.proc.pid, ev.proc.exe);

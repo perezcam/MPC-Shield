@@ -19,7 +19,8 @@
     ],
     "files.associations": {
       "compare": "c",
-      "cerrno": "c"
+      "cerrno": "c",
+      "stdio.h": "c"
     }
   }
   
