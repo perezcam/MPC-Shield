@@ -17,22 +17,36 @@
 #endif
 
 int main(void) {
-    // 1) Initialize fanotify fds (g_fan_content_fd, g_fan_notify_fd vienen de shared.c)
-    g_fan_content_fd = fanotify_init(
-        FAN_CLASS_CONTENT, O_RDONLY | O_CLOEXEC | FAN_NONBLOCK | O_LARGEFILE
-    );
-    if (g_fan_content_fd < 0) {
-        perror("fanotify_init content");
-        return EXIT_FAILURE;
-    }
-    g_fan_notify_fd = fanotify_init(
-        FAN_CLASS_NOTIF | FAN_REPORT_FID, O_RDONLY | O_CLOEXEC
-    );
-    if (g_fan_notify_fd < 0) {
-        perror("fanotify_init notify");
-        close(g_fan_content_fd);
-        return EXIT_FAILURE;
-    }
+// 1) FD de contenido (sin REPORT_NAME)
+g_fan_content_fd = fanotify_init(
+    FAN_CLOEXEC
+  | FAN_NONBLOCK
+  | FAN_CLASS_CONTENT,    // md + fd de fichero
+  O_RDONLY
+| O_LARGEFILE
+);
+if (g_fan_content_fd < 0) {
+  perror("fanotify_init content");
+  return EXIT_FAILURE;
+}
+
+// 2) FD de notificación (aquí SÍ pedimos el nombre)
+//    Usamos el macro FAN_REPORT_DFID_NAME = FAN_REPORT_NAME|FAN_REPORT_DIR_FID
+g_fan_notify_fd = fanotify_init(
+    FAN_CLOEXEC
+  | FAN_NONBLOCK
+  | FAN_CLASS_NOTIF       // sólo md, sin fd
+  | FAN_REPORT_DFID_NAME, // nombre tras la metadata + dir-FID
+  O_RDONLY
+| O_LARGEFILE
+);
+if (g_fan_notify_fd < 0) {
+  perror("fanotify_init notify");
+  close(g_fan_content_fd);
+  return EXIT_FAILURE;
+}
+
+
 
     // 2) Launch scanner_thread, monitor_thread, worker_thread(s)
     pthread_t scan_tid;

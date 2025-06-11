@@ -16,22 +16,33 @@ int g_fan_content_fd;
 int g_fan_notify_fd;
 
 int main(int argc, char **argv) {
-    /* 1) Initialize fanotify fds */
+    // 1) Inicializa el FD de contenido (para abrir fds de fichero)
     g_fan_content_fd = fanotify_init(
-        FAN_CLASS_CONTENT | FAN_CLOEXEC | FAN_NONBLOCK,
-        O_RDONLY | O_LARGEFILE
+        FAN_CLOEXEC        // close-on-exec
+    | FAN_NONBLOCK      // no bloqueante
+    | FAN_CLASS_CONTENT, // clase CONTENT: md + fd
+        O_RDONLY          // lecturas
+    | O_LARGEFILE       // soporte archivos >2 GB (en 32-bit)
     );
     if (g_fan_content_fd < 0) {
         perror("fanotify_init content");
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
+
+    // 2) Inicializa el FD de notificación (solo metadata)
+    //    Incluye FAN_REPORT_DIR_FID + FAN_REPORT_NAME usando la macro FAN_REPORT_DFID_NAME
     g_fan_notify_fd = fanotify_init(
-        FAN_CLASS_NOTIF | FAN_CLOEXEC | FAN_NONBLOCK,
-        O_RDONLY | O_LARGEFILE
+        FAN_CLOEXEC
+    | FAN_NONBLOCK
+    | FAN_CLASS_NOTIF       // clase NOTIF: md sin fd
+    | FAN_REPORT_DFID_NAME, // nombre de entrada + dir FID :contentReference[oaicite:1]{index=1}
+        O_RDONLY
+    | O_LARGEFILE
     );
     if (g_fan_notify_fd < 0) {
         perror("fanotify_init notify");
-        exit(EXIT_FAILURE);
+        close(g_fan_content_fd);
+        return EXIT_FAILURE;
     }
 
     /* 2) Spawn threads */

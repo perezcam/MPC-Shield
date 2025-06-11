@@ -4,19 +4,44 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/fanotify.h>
+#include <limits.h>
+#include <errno.h>
 
 #include "shared.h"
 
 /* ------------------------------------------------------------------ */
-/*                         Utilidades generales                        */
+/*                         Utilidades generales                       */
 /* ------------------------------------------------------------------ */
 
 /* Timestamp helper ― devuelve “YYYY-MM-DD HH:MM:SS” */
 static void timestamp(char *buf, size_t sz)
 {
     time_t t = time(NULL);
-    strftime(buf, sz, "%Y-%m-%d %H:%M:%S", localtime(&t));
+    struct tm tm;
+    localtime_r(&t, &tm);
+    strftime(buf, sz, "%Y-%m-%d %H:%M:%S", &tm);
+}
+
+/* Print file metadata: inode, size, uid, gid, perms, mtime */
+static void print_file_stat(const char *path)
+{
+    struct stat st;
+    if (stat(path, &st) == 0) {
+        char mtime[32];
+        struct tm tm;
+        localtime_r(&st.st_mtime, &tm);
+        strftime(mtime, sizeof(mtime), "%Y-%m-%d %H:%M:%S", &tm);
+        printf("    inode=%llu size=%lld bytes uid=%u gid=%u perms=%04o mtime=%s\n",
+               (unsigned long long)st.st_ino,
+               (long long)st.st_size,
+               st.st_uid, st.st_gid,
+               st.st_mode & 07777,
+               mtime);
+    } else {
+        printf("    stat failed for %s: %s\n", path, strerror(errno));
+    }
 }
 
 /* ------------------------------------------------------------------ */
@@ -38,13 +63,13 @@ void report_file_modification(const char *filepath,
         { FAN_MOVED_TO,   "move-to"   },
         { FAN_MODIFY,     "modify"    },
         { FAN_ATTRIB,     "attrib"    },
-        { 0,              NULL        }
+        { 0,              NULL         }
     };
 
     char cause_buf[128] = "";
     for (int i = 0; causes[i].name; ++i) {
         if (mask & causes[i].bit) {
-            if (*cause_buf)                /* concat con ‘|’ si hay varios */
+            if (*cause_buf)
                 strcat(cause_buf, "|");
             strcat(cause_buf, causes[i].name);
         }
@@ -54,8 +79,12 @@ void report_file_modification(const char *filepath,
 
     char ts[64];
     timestamp(ts, sizeof(ts));
-    printf("[%s] File change: %s (pid=%d) cause=%s (mask=0x%lx)\n",
-           ts, filepath, pid, cause_buf, mask);
+    printf("[%s] File change: %s (pid=%d) cause=%s (mask=0x%llx)\n",
+           ts, filepath, pid, cause_buf, (unsigned long long)mask);
+
+    /* Imprime metadata del fichero */
+    print_file_stat(filepath);
+
     fflush(stdout);
 }
 
@@ -73,77 +102,69 @@ void report_suspicious(pid_t pid, const char *exe_path)
 }
 
 /* ------------------------------------------------------------------ */
-/*                  Live-view de dispositivos USB montados             */
+/*                  Live-view de dispositivos USB montados           */
 /* ------------------------------------------------------------------ */
 
-extern void report_connected_devices(const char **devices, int count);
-
-/* Snapshot anterior para comparar cambios */
 static char **prev_mounts = NULL;
-static int    prev_count  = -1;
+static int    prev_count  = 0;
 
 static void free_prev_mounts(void)
 {
-    if (!prev_mounts)
-        return;
-
     for (int i = 0; i < prev_count; ++i)
         free(prev_mounts[i]);
-
     free(prev_mounts);
     prev_mounts = NULL;
-    prev_count  = -1;
+    prev_count  = 0;
 }
 
-/**
- * Report the up-to-date list of USB mounts.
- * Sólo se refresca la pantalla cuando la lista cambia,
- * emulando el comportamiento de utilidades como `top`.
- */
 void report_current_mounts(void)
 {
     char *mounts[MAX_USBS];
     int   n = get_current_mounts(mounts, MAX_USBS);
 
-    /* 1️⃣  ¿Se modificó la lista? */
+    /* Detectar cambio */
     int changed = (n != prev_count);
     if (!changed) {
-        for (int i = 0; i < n && !changed; ++i)
-            if (strcmp(mounts[i], prev_mounts[i]) != 0)
+        for (int i = 0; i < n; ++i) {
+            if (strcmp(mounts[i], prev_mounts[i]) != 0) {
                 changed = 1;
+                break;
+            }
+        }
     }
 
-    if (!changed) {                     /* Sin cambios → salida silenciosa */
+    /* Si no cambió, limpiar mounts temporal y salir */
+    if (!changed) {
         for (int i = 0; i < n; ++i)
             free(mounts[i]);
         return;
     }
 
-    /* 2️⃣  Limpia la pantalla y re-pinta la info */
-    printf("\033[2J\033[H");            /* ANSI clear-screen + cursor-home */
-
-    char ts[20];
+    /* Mostrar nueva lista */
+    char ts[64];
     timestamp(ts, sizeof(ts));
-
     printf("=== USB mounts (live) ===\n");
     printf("[%s] %d device%s mounted\n", ts, n, n == 1 ? "" : "s");
     for (int i = 0; i < n; ++i) {
         printf("  • %s\n", mounts[i]);
-        free(mounts[i]);
     }
     fflush(stdout);
 
-    /* 3️⃣  Actualiza el snapshot para la próxima llamada */
+    /* Actualizar snapshot */
     free_prev_mounts();
     if (n > 0) {
-        prev_mounts = malloc(sizeof(char *) * n);
-        for (int i = 0; i < n; ++i)
-            prev_mounts[i] = strdup(mounts[i]); /* dup de los paths */
+        prev_mounts = malloc(sizeof(char*) * n);
+        for (int i = 0; i < n; ++i) {
+            prev_mounts[i] = strdup(mounts[i]);
+        }
+        prev_count = n;
     }
-    prev_count = n;
+
+    /* Liberar mounts temporal */
+    for (int i = 0; i < n; ++i)
+        free(mounts[i]);
 }
 
-/* Liberar memoria al finalizar el programa */
 __attribute__((destructor))
 static void cleanup_mount_cache(void)
 {

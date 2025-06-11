@@ -72,8 +72,9 @@ static void remove_mount_entry(const char *devnode) {
 
 void mark_mount(const char *path) {
     printf("Marking %s",path);
-    unsigned long events_content = FAN_CLOSE_WRITE | FAN_MODIFY| FAN_ACCESS;
-    unsigned long events_notify  = FAN_CREATE | FAN_DELETE | FAN_MOVED_FROM | FAN_MOVED_TO;
+    fflush(stdout);
+    unsigned long events_content = FAN_CLOSE_WRITE | FAN_MODIFY| FAN_ACCESS|FAN_OPEN;
+    unsigned long events_notify  = FAN_CREATE | FAN_DELETE | FAN_MOVED_FROM | FAN_MOVED_TO|FAN_DELETE_SELF;
 
     // mark for content events
     if (fanotify_mark(
@@ -102,10 +103,15 @@ void mark_mount(const char *path) {
 static int mark_cb(const char *fpath, const struct stat *sb,
     int typeflag, struct FTW *ftwbuf)
 {
-    //Only process directories
+    // Marca directorios para crear nuevas marcas recursivas
     if (typeflag == FTW_D) {
-    mark_mount(fpath);
-    fflush(stdout);
+        mark_mount(fpath);
+        fflush(stdout);
+    }
+    // Marca también archivos para que monitor reciba OPEN/MODIFY/CLOSE_WRITE
+    else if (typeflag == FTW_F) {
+        mark_mount(fpath);
+        fflush(stdout);
     }
     return 0;
 }
