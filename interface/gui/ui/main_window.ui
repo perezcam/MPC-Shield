@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+
+  <!-- Ventana principal -->
+  <object class="GtkApplicationWindow" id="main_window">
+    <property name="title">MatCom Guard</property>
+    <property name="default-width">800</property>
+    <property name="default-height">600</property>
+
+    <child>
+      <!-- Notebook con tres páginas -->
+      <object class="GtkNotebook" id="notebook_main">
+        <property name="tab-pos">top</property>
+
+        <!-- Página 1: Dispositivos -->
+        <child>
+          <object class="GtkScrolledWindow" id="scrolled_devices">
+            <property name="hexpand">True</property>
+            <property name="vexpand">True</property>
+            <child>
+              <object class="GtkTreeView" id="tree_devices"/>
+            </child>
+          </object>
+        </child>
+        <child type="tab">
+          <object class="GtkLabel">
+            <property name="label">Dispositivos</property>
+          </object>
+        </child>
+
+        <!-- Página 2: Puertos -->
+        <child>
+          <object class="GtkScrolledWindow" id="scrolled_ports">
+            <property name="hexpand">True</property>
+            <property name="vexpand">True</property>
+            <child>
+              <object class="GtkTreeView" id="tree_ports"/>
+            </child>
+          </object>
+        </child>
+        <child type="tab">
+          <object class="GtkLabel">
+            <property name="label">Puertos</property>
+          </object>
+        </child>
+
+        <!-- Página 3: Procesos -->
+        <child>
+          <object class="GtkScrolledWindow" id="scrolled_processes">
+            <property name="hexpand">True</property>
+            <property name="vexpand">True</property>
+            <child>
+              <object class="GtkTreeView" id="tree_processes"/>
+            </child>
+          </object>
+        </child>
+        <child type="tab">
+          <object class="GtkLabel">
+            <property name="label">Procesos</property>
+          </object>
+        </child>
+
+      </object>
+    </child>
+  </object>
+</interface>

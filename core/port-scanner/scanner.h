@@ -9,4 +9,9 @@
  */
 ScanResult scan_ports(void);
 
+/**
+ * Free memory allocated for ScanResult
+ */
+void       free_result (ScanResult *res);
+
 #endif // SCANNER_H
