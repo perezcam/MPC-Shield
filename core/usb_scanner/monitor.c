@@ -10,6 +10,7 @@
 #include <openssl/sha.h>
 #include <fcntl.h>
 #include <limits.h>
+#include "path_stat_table.h"
 
 /**
  * monitor_thread:
@@ -46,8 +47,7 @@ void *monitor_thread(void *arg) {
             while (ptr < len) {
                 struct fanotify_event_metadata *md = (void *)(buf + ptr);
                 /* Validate metadata length and version */
-                if (md->event_len < sizeof(*md) ||
-                    md->vers != FANOTIFY_METADATA_VERSION) {
+                if (md->event_len < sizeof(*md)) {
                     ptr += md->event_len;
                     continue;
                 }
@@ -68,9 +68,18 @@ void *monitor_thread(void *arg) {
                     /* Auto-mark new directories */
                     if (md->mask & (FAN_CREATE | FAN_MOVED_TO)) {
                         struct stat st;
-                        if (stat(ev.file.path, &st) == 0 && S_ISDIR(st.st_mode)) {
+                        if (stat(ev.file.path, &st) == 0) {
+                            // 1) Fanotify‐mark everything (dirs + files)
                             mark_mount(ev.file.path);
+
+                            // 2) Only snapshot regular files in our table
+                            if (S_ISREG(st.st_mode)) {
+                                pst_update(&path_table, ev.file.path, &st);
+                            }
                         }
+                    }
+                    if (md->mask & (FAN_DELETE | FAN_MOVED_FROM)) {
+                        pst_remove(&path_table, ev.file.path); 
                     }
                     push_event(ev);
                 } else {

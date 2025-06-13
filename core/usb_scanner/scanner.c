@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "shared.h"
+#include "path_stat_table.h"
 
 #include <libudev.h>
 #include <mntent.h>
@@ -12,6 +13,8 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>  // for AT_FDCWD
+
+
 
 
 // Global mount-list state (protected by mount_mutex)
@@ -70,7 +73,7 @@ static void remove_mount_entry(const char *devnode) {
 
 
 
-void mark_mount(const char *path) {
+void mark_path(const char *path) {
     printf("Marking %s",path);
     fflush(stdout);
     unsigned long events_content = FAN_CLOSE_WRITE | FAN_MODIFY| FAN_ACCESS|FAN_OPEN;
@@ -84,7 +87,7 @@ void mark_mount(const char *path) {
             AT_FDCWD,
             path) < 0
     ){
-        fprintf(stderr, "mark_mount(content) failed for %s: %s\n", path, strerror(errno));
+        fprintf(stderr, "mark_path(content) failed for %s: %s\n", path, strerror(errno));
     }
     
     // mark for notify events
@@ -95,7 +98,7 @@ void mark_mount(const char *path) {
         AT_FDCWD,
         path) < 0
     ){
-        fprintf(stderr, "mark_mount(notify) failed for %s: %s\n", path, strerror(errno));
+        fprintf(stderr, "mark_path(notify) failed for %s: %s\n", path, strerror(errno));
     }
 }
 
@@ -105,13 +108,13 @@ static int mark_cb(const char *fpath, const struct stat *sb,
 {
     // Marca directorios para crear nuevas marcas recursivas
     if (typeflag == FTW_D) {
-        mark_mount(fpath);
-        fflush(stdout);
+        mark_path(fpath);
     }
     // Marca también archivos para que monitor reciba OPEN/MODIFY/CLOSE_WRITE
     else if (typeflag == FTW_F) {
-        mark_mount(fpath);
-        fflush(stdout);
+        mark_path(fpath);
+        //record pst snapshot
+        pst_update(&path_table,fpath,sb);
     }
     return 0;
 }
@@ -126,6 +129,21 @@ static void full_mark(const char *root)
 
     printf("Full scan-and-mark of %s finished.\n", root);
     fflush(stdout);
+}
+
+static int unmark_cb(const char *fpath, const struct stat *sb,
+    int typeflag, struct FTW *ftwbuf)
+{
+    // Unmarks files from removed device
+    if (typeflag == FTW_F) {
+        pst_remove(&path_table,fpath);
+    }
+    return 0;
+}
+
+static void full_unmark(const char *root)
+{
+    nftw(root, unmark_cb, 64, FTW_PHYS | FTW_MOUNT);
 }
 
 static char *find_mount(const char *devnode) {
@@ -238,9 +256,15 @@ void *scanner_thread(void *arg) {
                         full_mark(mnt);
                         add_mount_entry(devnode, mnt);
                         free(mnt);
-
                     }
                 } else if (strcmp(action, "remove") == 0) {
+                    sleep(1);  // give setmntent a moment to update
+                    char *mnt = find_mount(devnode);
+                    if (mnt) {
+                        // recursively drop all files under that mount
+                        full_unmark(mnt);
+                        free(mnt);
+                    }
                     remove_mount_entry(devnode);
                 }
             }
