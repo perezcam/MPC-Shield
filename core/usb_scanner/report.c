@@ -63,6 +63,8 @@ void report_file_modification(const char *filepath,
         { FAN_MOVED_TO,   "move-to"   },
         { FAN_MODIFY,     "modify"    },
         { FAN_ATTRIB,     "attrib"    },
+        { FAN_ACCESS,   "access"   },
+        { FAN_OPEN,     "open"     },
         { 0,              NULL         }
     };
 

@@ -9,14 +9,17 @@
 #include <linux/limits.h> // For PATH_MAX
 #include <sys/fanotify.h>
 #include <fcntl.h>
-
-#include "shared.h"  // Aquí están los prototipos y los extern de las globals
+#include "shared.h"  
+#include "path_stat_table.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 int g_fan_content_fd = -1;
 int g_fan_notify_fd  = -1;
+
+pthread_mutex_t   path_table_mutex = PTHREAD_MUTEX_INITIALIZER;
+path_stat_table_t path_table;
 
 int main(void) {
 // 1) FD de contenido (sin REPORT_NAME)
@@ -82,14 +85,14 @@ if (g_fan_notify_fd < 0) {
     printf("\n=== Initial USB mounts ===\n");
     report_current_mounts();
 
-    // 4) Test mark_mount en un tmpdir
+    // 4) Test mark path en un tmpdir
     char tmpdir[] = "/tmp/usbtestXXXXXX";
     char *mount_dir = mkdtemp(tmpdir);
     if (!mount_dir) {
         perror("mkdtemp");
     } else {
-        printf("\n=== Testing mark_mount on %s ===\n", mount_dir);
-        mark_mount(mount_dir);
+        printf("\n=== Testing mark path on %s ===\n", mount_dir);
+        mark_path(mount_dir);
 
         char filepath[PATH_MAX];
         snprintf(filepath, sizeof(filepath), "%s/testfile.txt", mount_dir);

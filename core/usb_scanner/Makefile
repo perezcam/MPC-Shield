@@ -27,7 +27,7 @@ $(TARGET): $(OBJS)
 
 # Regla genérica para compilar cada .c en .o
 %.o: %.c
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(TARGET) $(OBJS)
