@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "path_stat_table.h"
 
 /* Thread entrypoints */
 void *monitor_thread(void *arg);
@@ -15,8 +16,11 @@ void *worker_thread (void *arg);
 int g_fan_content_fd;
 int g_fan_notify_fd;
 
-int main(int argc, char **argv) {
-    // 1) Inicializa el FD de contenido (para abrir fds de fichero)
+pthread_mutex_t path_table_mutex;
+path_stat_table_t path_table;
+
+int main() {
+    /* Initialize content fd*/
     g_fan_content_fd = fanotify_init(
         FAN_CLOEXEC        // close-on-exec
     | FAN_NONBLOCK      // no bloqueante
@@ -29,13 +33,12 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    // 2) Inicializa el FD de notificación (solo metadata)
-    //    Incluye FAN_REPORT_DIR_FID + FAN_REPORT_NAME usando la macro FAN_REPORT_DFID_NAME
+    /* Initialize notification FD */
     g_fan_notify_fd = fanotify_init(
         FAN_CLOEXEC
     | FAN_NONBLOCK
-    | FAN_CLASS_NOTIF       // clase NOTIF: md sin fd
-    | FAN_REPORT_DFID_NAME, // nombre de entrada + dir FID :contentReference[oaicite:1]{index=1}
+    | FAN_CLASS_NOTIF       // class NOTIF: md without fd
+    | FAN_REPORT_DFID_NAME, // entry name + dir FID :contentReference[oaicite:1]{index=1}
         O_RDONLY
     | O_LARGEFILE
     );
@@ -45,7 +48,13 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    /* 2) Spawn threads */
+    /*Initialize path-stat table (pst)*/
+    pst_init(&path_table);
+
+    /*Initialize pst mutex*/
+    pthread_mutex_init(&path_table_mutex, NULL);
+
+    /* Spawn threads */
     pthread_t scan_tid, mon_tid, workers[NUM_WORKERS];
     if (pthread_create(&scan_tid, NULL, scanner_thread, NULL) != 0) {
         perror("pthread_create(scanner)");
@@ -62,14 +71,15 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* 3) Join (daemon-style) */
+    /* Join (daemon-style) */
     pthread_join(scan_tid,  NULL);
     pthread_join(mon_tid,   NULL);
     for (int i = 0; i < NUM_WORKERS; i++)
         pthread_join(workers[i], NULL);
 
-    /* 4) Cleanup */
+    /* Cleanup */
     close(g_fan_content_fd);
     close(g_fan_notify_fd);
+    pthread_mutex_destroy(&path_table_mutex);
     return 0;
 }
