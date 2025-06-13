@@ -14,9 +14,6 @@
 #include <errno.h>
 #include <fcntl.h>  // for AT_FDCWD
 
-
-
-
 // Global mount-list state (protected by mount_mutex)
 static struct {
     char *devnode;

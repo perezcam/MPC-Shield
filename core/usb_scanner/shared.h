@@ -53,7 +53,7 @@ void *scanner_thread(void *arg);
 void *worker_thread(void *arg);
 
 /* scanner.c exporta */
-void  mark_mount(const char *path);
+void  mark_path(const char *path);
 int   get_current_mounts(char *mounts[], int max);
 
 /* report.c (o utils.c) exporta */

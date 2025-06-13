@@ -70,7 +70,7 @@ void *monitor_thread(void *arg) {
                         struct stat st;
                         if (stat(ev.file.path, &st) == 0) {
                             // 1) Fanotify‐mark everything (dirs + files)
-                            mark_mount(ev.file.path);
+                            mark_path(ev.file.path);
 
                             // 2) Only snapshot regular files in our table
                             if (S_ISREG(st.st_mode)) {
@@ -98,7 +98,7 @@ void *monitor_thread(void *arg) {
                     push_event(ev);
                 }
 
-                /* Debug logging */
+                // /* Debug logging */
                 // fprintf(stderr, "[DEBUG] fd=%d mask=0x%llx path=%s\n",
                 //         md->fd,
                 //         (unsigned long long)md->mask,
