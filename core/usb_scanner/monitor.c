@@ -90,11 +90,11 @@ void *monitor_thread(void *arg) {
                 }
 
                 /* Debug logging */
-                fprintf(stderr, "[DEBUG] fd=%d mask=0x%llx path=%s\n",
-                        md->fd,
-                        (unsigned long long)md->mask,
-                        ev.file.path);
-                fflush(stderr);
+                // fprintf(stderr, "[DEBUG] fd=%d mask=0x%llx path=%s\n",
+                //         md->fd,
+                //         (unsigned long long)md->mask,
+                //         ev.file.path);
+                // fflush(stderr);
 
                 ptr += md->event_len;
             }

@@ -12,8 +12,8 @@ void *scanner_thread(void *arg);
 void *worker_thread (void *arg);
 
 /* Definition of the global fanotify FDs */
-int g_fan_content_fd;
-int g_fan_notify_fd;
+int g_fan_content_fd = -1;
+int g_fan_notify_fd  = -1;
 
 int main(int argc, char **argv) {
     // 1) Inicializa el FD de contenido (para abrir fds de fichero)

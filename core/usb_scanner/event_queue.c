@@ -1,5 +1,3 @@
-// event_queue.c   (o bien añádelo al principio de worker.c)
-
 #include "shared.h"
 #include <pthread.h>
 #include <string.h>
