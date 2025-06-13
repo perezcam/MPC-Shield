@@ -13,8 +13,8 @@ void *scanner_thread(void *arg);
 void *worker_thread (void *arg);
 
 /* Definition of the global fanotify FDs */
-int g_fan_content_fd;
-int g_fan_notify_fd;
+int g_fan_content_fd = -1;
+int g_fan_notify_fd  = -1;
 
 pthread_mutex_t path_table_mutex;
 path_stat_table_t path_table;

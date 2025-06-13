@@ -6,6 +6,7 @@
 #include <openssl/sha.h>
 #include <asm-generic/fcntl.h>
 #include <errno.h>
+#include "legitimacy.h"
 
 
 /* Provided by report.c */
@@ -39,22 +40,6 @@ static int get_process_info(pid_t pid, ProcessInfo *out) {
         fclose(fp);
     }
     out->pid = pid;
-    return 0;
-}
-
-static int sha256_file(const char *path, unsigned char out[SHA256_DIGEST_LENGTH]) {
-    unsigned char buf[8192];
-    SHA256_CTX ctx;
-    SHA256_Init(&ctx);
-
-    int fd = open(path, O_RDONLY);
-    if (fd < 0) return -1;
-
-    ssize_t n;
-    while ((n = read(fd, buf, sizeof(buf))) > 0)
-        SHA256_Update(&ctx, buf, n);
-    close(fd);
-    SHA256_Final(out, &ctx);
     return 0;
 }
 
@@ -96,26 +81,6 @@ static void get_exe_path(pid_t pid, char *out, size_t sz) {
     snprintf(link, sizeof(link), "/proc/%d/exe", pid);
     ssize_t len = readlink(link, out, sz-1);
     out[(len>0)?len:0] = '\0';
-}
-
-/* Whitelist check */
-static int is_legit(const char *exe) {
-    const char *ok[] = { "/bin/", "/usr/bin/", "/sbin/", "/usr/sbin/", NULL };
-    for (int i = 0; ok[i]; i++)
-        if (strncmp(exe, ok[i], strlen(ok[i])) == 0)
-            return 1;
-    return 0;
-}
-/*Know Malware list*/
-static const unsigned char KNOWN_MALWARE[][SHA256_DIGEST_LENGTH] = {
-    /* Zeus */ {0x12,0x34},
-    /* WannaCry */ {0xab,0xcd}
-};
-static inline int is_known_malware(const unsigned char digest[SHA256_DIGEST_LENGTH]) {
-    for (size_t i = 0; i < sizeof(KNOWN_MALWARE)/sizeof(KNOWN_MALWARE[0]); ++i)
-        if (!memcmp(digest, KNOWN_MALWARE[i], SHA256_DIGEST_LENGTH))
-            return 1;
-    return 0;
 }
 
 void *worker_thread(void *arg) {

@@ -15,6 +15,8 @@
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
+int g_fan_content_fd = -1;
+int g_fan_notify_fd  = -1;
 
 int main(void) {
 // 1) FD de contenido (sin REPORT_NAME)
