@@ -1,0 +1,26 @@
+// .vscode/launch.json
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug C Program",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/${fileBasenameNoExtension}",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "miDebuggerPath": "/usr/bin/gdb",
+        "preLaunchTask": "build"
+      }
+    ],
+    "files.associations": {
+      "compare": "c",
+      "cerrno": "c",
+      "stdio.h": "c"
+    }
+  }
+  
