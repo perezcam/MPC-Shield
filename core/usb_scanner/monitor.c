@@ -70,7 +70,7 @@ void *monitor_thread(void *arg) {
                         strncpy(ev.file.path, fullpath, PATH_MAX-1);
                         ev.file.path[PATH_MAX-1] = '\0';
                     }
-                    printf("PATH %s\n" , fullpath);fflush(stdout);
+                    printf("PATH %s\n" , ev.file.path);fflush(stdout);
 
                     /* Auto-mark new directories */
                     if (md->mask & (FAN_CREATE | FAN_MOVED_TO)) {

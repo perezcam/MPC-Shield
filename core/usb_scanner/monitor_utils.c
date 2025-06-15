@@ -5,6 +5,7 @@
 #include <linux/fanotify.h>
 #include <sys/syscall.h>   // for SYS_open_by_handle_at
 #include <fcntl.h>         // for O_RDONLY|O_DIRECTORY
+#include <linux/openat2.h>      /* OPEN_TREE_*  */
 #include <unistd.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -50,11 +51,9 @@ int get_event_fullpath(struct fanotify_event_metadata *md,
         printf("MNT_DIR %s\n", mnt_dir);
 
         // 3) Open any FD on that filesystem (the mount-root you recorded)
-        int mount_fd = open(mnt_dir, O_PATH | O_DIRECTORY);
-        if (mount_fd < 0) {
-            perror("open(mnt_dir)");
-            return -1;
-        }
+        int mount_fd = open(mnt_dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+        if (mount_fd < 0) { perror("open mount_dir"); return -1; }
+        // usar mount_fd directamente sin open_tree
 
         printf("mount fd: %d\n", mount_fd);
 
@@ -68,9 +67,24 @@ int get_event_fullpath(struct fanotify_event_metadata *md,
                 (unsigned long)st.st_ino);
         }
 
+                /* ---------- INSPECCIÓN DEL FD ------------- */
+        char fdinfo[64];
+        snprintf(fdinfo, sizeof fdinfo, "/proc/self/fdinfo/%d", mount_fd);
+        FILE *fp = fopen(fdinfo, "r");
+        if (fp) {
+            char line[128];
+            fprintf(stderr, "=== fdinfo %d ===\n", mount_fd);
+            while (fgets(line, sizeof line, fp)) {
+                fputs(line, stderr);   /* imprime mnt_id, flags, pos... */
+            }
+            fclose(fp);
+        } else {
+            perror("fopen fdinfo");
+        }
+
 
         // 4) Turn the handle into a real FD
-        int event_fd = open_by_handle_at(mount_fd, file_handle, O_PATH);
+        int event_fd = open_by_handle_at(mount_fd, file_handle, O_RDONLY| O_DIRECTORY);
         close(mount_fd);  // we only needed mount_fd for the syscall
         if (event_fd < 0) {
             if (errno == ESTALE) {
