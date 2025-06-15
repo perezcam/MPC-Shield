@@ -20,7 +20,11 @@
     "files.associations": {
       "compare": "c",
       "cerrno": "c",
-      "stdio.h": "c"
+      "stdio.h": "c",
+      "unistd.h": "c",
+      "fcntl.h": "c",
+      "limits.h": "c",
+      "mntent.h": "c"
     }
   }
   

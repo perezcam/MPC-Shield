@@ -10,7 +10,9 @@ SRCS := \
 	worker.c  \
 	event_queue.c \
 	legitimacy.c \
-	scanner_test.c
+	scanner_test.c\
+	path_stat_table.c\
+	monitor_utils.c
 
 # Objetos derivados de las fuentes
 OBJS := $(SRCS:.c=.o)

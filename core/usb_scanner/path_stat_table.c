@@ -8,7 +8,7 @@
  * pst_init(tbl)
  *   Inicializa la tabla (marca todas las entradas como libres).
  */
-static void pst_init(path_stat_table_t *tbl) {
+void pst_init(path_stat_table_t *tbl) {
     tbl->count = 0;
     for (int i = 0; i < MAX_ENTRIES; i++) {
         tbl->entries[i].in_use = 0;
@@ -20,7 +20,7 @@ static void pst_init(path_stat_table_t *tbl) {
  *   Busca el índice de la entrada cuyo campo path coincida con 'path'.
  *   Retorna el índice [0..MAX_ENTRIES-1] si existe, o -1 si no está.
  */
-static int pst_find_index(path_stat_table_t *tbl, const char *path) {
+int pst_find_index(path_stat_table_t *tbl, const char *path) {
     for (int i = 0; i < MAX_ENTRIES; i++) {
         if (tbl->entries[i].in_use &&
             strcmp(tbl->entries[i].path, path) == 0) {
@@ -36,7 +36,7 @@ static int pst_find_index(path_stat_table_t *tbl, const char *path) {
  *   sobrescribe el struct stat; si no, lo crea en una ranura libre.
  *   Retorna 0 en éxito, -1 si no hay espacio libre.
  */
-static int pst_update(path_stat_table_t *tbl,
+int pst_update(path_stat_table_t *tbl,
                       const char *path,
                       const struct stat *st)
 {
@@ -77,7 +77,7 @@ static int pst_update(path_stat_table_t *tbl,
  *   Elimina la entrada asociada a 'path', si existe.
  *   Retorna 0 si se borró o no existía, -1 en error interno.
  */
-static int pst_remove(path_stat_table_t *tbl, const char *path) {
+int pst_remove(path_stat_table_t *tbl, const char *path) {
     pthread_mutex_lock(&path_table_mutex);
 
     int idx = pst_find_index(tbl, path);
@@ -100,7 +100,7 @@ static int pst_remove(path_stat_table_t *tbl, const char *path) {
  *   Retorna puntero al struct stat asociado a 'path', o NULL si no existe.
  *   El puntero permanece válido hasta la siguiente inserción/borrado.
  */
-static int pst_lookup(path_stat_table_t *tbl, const char *path,struct stat *out) {
+int pst_lookup(path_stat_table_t *tbl, const char *path,struct stat *out) {
     pthread_mutex_lock(&path_table_mutex);
 
     int idx = pst_find_index(tbl, path);

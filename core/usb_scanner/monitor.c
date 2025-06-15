@@ -10,6 +10,7 @@
 #include <openssl/sha.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdlib.h>
 
 
 
@@ -62,12 +63,14 @@ void *monitor_thread(void *arg) {
                         ptr += md->event_len;
                         continue;
                     }
+                    printf("NOTIFY EVENT\n");fflush(stdout);
                     /* Get file path*/
                     char fullpath[PATH_MAX];
                     if (get_event_fullpath(md, fullpath, sizeof(fullpath)) == 0) {
                         strncpy(ev.file.path, fullpath, PATH_MAX-1);
                         ev.file.path[PATH_MAX-1] = '\0';
                     }
+                    printf("PATH %s\n" , fullpath);fflush(stdout);
 
                     /* Auto-mark new directories */
                     if (md->mask & (FAN_CREATE | FAN_MOVED_TO)) {
