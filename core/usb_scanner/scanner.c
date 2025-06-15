@@ -99,7 +99,7 @@ void mark_path(const char *path) {
     printf("Marking %s",path);
     fflush(stdout);
     unsigned long events_content = FAN_CLOSE_WRITE | FAN_MODIFY; //| FAN_ACCESS|FAN_OPEN;
-    unsigned long events_notify  = FAN_CREATE | FAN_DELETE | FAN_MOVED_FROM | FAN_MOVED_TO|FAN_DELETE_SELF;
+    unsigned long events_notify  = FAN_CREATE | FAN_DELETE | FAN_MOVED_FROM | FAN_MOVED_TO|FAN_DELETE_SELF |FAN_ONDIR;
 
     // mark for content events
     if (fanotify_mark(
