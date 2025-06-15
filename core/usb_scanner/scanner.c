@@ -1,6 +1,5 @@
 #define _GNU_SOURCE
 #include "shared.h"
-#include "path_stat_table.h"
 
 #include <libudev.h>
 #include <mntent.h>

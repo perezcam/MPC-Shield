@@ -6,6 +6,7 @@
 #include <openssl/sha.h>
 #include <asm-generic/fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include "legitimacy.h"
 
 
@@ -99,6 +100,7 @@ void *worker_thread(void *arg) {
             /* the file already exists */
             continue;
         }
+
         ev.file.mode  = st.st_mode;
         ev.file.mtime = st.st_mtim;  
 
@@ -121,6 +123,14 @@ void *worker_thread(void *arg) {
         }
 
         report_file_modification(ev.file.path, ev.mask, ev.proc.pid);
+        /*  Only on modification events, compare & update PST */
+        if (ev.mask & (FAN_MODIFY | FAN_CLOSE_WRITE)) {
+            struct stat old;
+            if (pst_lookup(&path_table, ev.file.path, &old) == 0) {
+                report_metadata_change(ev.file.path, &old, &st, ev.proc.pid);
+            }
+            pst_update(&path_table, ev.file.path, &st);
+        }
     }
     return NULL;
 }

@@ -10,7 +10,6 @@
 #include <sys/fanotify.h>
 #include <fcntl.h>
 #include "shared.h"  
-#include "path_stat_table.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096

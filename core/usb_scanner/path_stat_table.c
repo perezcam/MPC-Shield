@@ -1,31 +1,8 @@
-// path_stat_table.h
-
-#ifndef PATH_STAT_TABLE_H
-#define PATH_STAT_TABLE_H
-
 #include <sys/stat.h>
 #include <limits.h>
 #include <string.h>
 #include <pthread.h>
-
-
-// Máximo de entradas simultáneas en la tabla
-#define MAX_ENTRIES 128
-
-typedef struct {
-    char        path[PATH_MAX];  // ruta absoluta (terminada en '\0')
-    struct stat st;              // snapshot de stat
-    int         in_use;          // 0 = espacio libre; 1 = ocupado
-} pst_entry_t;
-
-typedef struct {
-    pst_entry_t entries[MAX_ENTRIES];
-    int         count;  // cuántas entradas están “in use”
-} path_stat_table_t;
-
-/* Global path-stat table and its mutex */
-extern path_stat_table_t path_table;
-extern pthread_mutex_t path_table_mutex;
+#include "shared.h"
 
 /**
  * pst_init(tbl)
@@ -137,4 +114,3 @@ static int pst_lookup(path_stat_table_t *tbl, const char *path,struct stat *out)
     return 0;
 }
 
-#endif // PATH_STAT_TABLE_H

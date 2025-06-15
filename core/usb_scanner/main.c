@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "path_stat_table.h"
 
 /* Thread entrypoints */
 void *monitor_thread(void *arg);
