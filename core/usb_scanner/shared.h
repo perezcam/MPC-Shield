@@ -67,32 +67,33 @@ extern pthread_mutex_t path_table_mutex;
 
 
 /* Cola de eventos */
-void push_event(EventInfo ev);
-void pop_event(EventInfo *ev);
+extern void push_event(EventInfo ev);
+extern void pop_event(EventInfo *ev);
 
 /* Entrypoints de hilos */
-void *monitor_thread(void *arg);
-void *scanner_thread(void *arg);
-void *worker_thread(void *arg);
+extern void *monitor_thread(void *arg);
+extern void *scanner_thread(void *arg);
+extern void *worker_thread(void *arg);
 
 /* scanner.c */
-void  mark_path(const char *path);
-int   get_current_mounts(char *mounts[], int max);
+extern void  mark_path(const char *path);
+extern int get_current_mounts(char *mounts[], int max);
+int find_mount_by_fsid(__kernel_fsid_t event_fsid, char *out);
 
 /* report.c  */
 int   get_path_from_fd(int fd, char *buf, size_t bufsiz);
-void  report_current_mounts(void);
-void  report_file_modification(const char *filepath, uint64_t mask, pid_t pid);
-void  report_suspicious(pid_t pid, const char *exe_path);
-void report_metadata_change(const char *filepath, const struct stat *old_s, const struct stat *new_s, pid_t pid);
+extern void  report_current_mounts(void);
+extern void  report_file_modification(const char *filepath, uint64_t mask, pid_t pid);
+extern void  report_suspicious(pid_t pid, const char *exe_path);
+extern void report_metadata_change(const char *filepath, const struct stat *old_s, const struct stat *new_s, pid_t pid);
 
 /*path_stat_table.c*/
-static void pst_init(path_stat_table_t *tbl);
-static int pst_find_index(path_stat_table_t *tbl, const char *path);
-static int pst_update(path_stat_table_t *tbl, char *path, const struct stat *st);
-static int pst_remove(path_stat_table_t *tbl, const char *path);
-static int pst_lookup(path_stat_table_t *tbl, const char *path, struct stat *out);
+extern void pst_init(path_stat_table_t *tbl);
+extern int pst_find_index(path_stat_table_t *tbl, const char *path);
+extern int pst_update(path_stat_table_t *tbl, const char *path, const struct stat *st);
+extern int pst_remove(path_stat_table_t *tbl, const char *path);
+extern int pst_lookup(path_stat_table_t *tbl, const char *path, struct stat *out);
 
 /*monitor_utils.c*/
-int get_event_fullpath(struct fanotify_event_metadata *md, char *out, size_t outlen);
+extern int get_event_fullpath(struct fanotify_event_metadata *md, char *out, size_t outlen);
 #endif // SHARED_H

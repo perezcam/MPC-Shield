@@ -79,35 +79,9 @@ if (g_fan_notify_fd < 0) {
         }
     }
 
-    // 3) Pausa corta para que scanner_thread haga su trabajo
-    sleep(2);
-    printf("\n=== Initial USB mounts ===\n");
-    report_current_mounts();
-
-    // 4) Test mark path en un tmpdir
-    char tmpdir[] = "/tmp/usbtestXXXXXX";
-    char *mount_dir = mkdtemp(tmpdir);
-    if (!mount_dir) {
-        perror("mkdtemp");
-    } else {
-        printf("\n=== Testing mark path on %s ===\n", mount_dir);
-        mark_path(mount_dir);
-
-        char filepath[PATH_MAX];
-        snprintf(filepath, sizeof(filepath), "%s/testfile.txt", mount_dir);
-        FILE *f = fopen(filepath, "w");
-        if (f) {
-            fputs("hello world\n", f);
-            fclose(f);
-            sleep(1);  // <— dar tiempo a que monitor+worker detecten el CREATE
-        } else {
-            perror("fopen testfile");
-        }
-    }
-
     // 5) Loop infinito de report_current_mounts (igual que antes)
     while (1) {
-        sleep(2);
+        sleep(1);
         report_current_mounts();
     }
 

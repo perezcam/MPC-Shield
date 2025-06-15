@@ -37,7 +37,7 @@ int main() {
         FAN_CLOEXEC
     | FAN_NONBLOCK
     | FAN_CLASS_NOTIF       // class NOTIF: md without fd
-    | FAN_REPORT_DFID_NAME, // entry name + dir FID :contentReference[oaicite:1]{index=1}
+    | FAN_REPORT_DFID_NAME, // entry name + dir FID 
         O_RDONLY
     | O_LARGEFILE
     );

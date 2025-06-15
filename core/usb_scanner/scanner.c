@@ -12,11 +12,14 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>  // for AT_FDCWD
+#include <sys/stat.h>
+#include <sys/statfs.h>   
 
 // Global mount-list state (protected by mount_mutex)
 static struct {
     char *devnode;
     char *mnt_dir;
+    __kernel_fsid_t   fsid;     // filesystem ID for fast lookup
 } mount_list[MAX_USBS];
 
 static int             mount_count = 0;
@@ -44,6 +47,16 @@ static void add_mount_entry(const char *devnode, const char *mnt_dir) {
     if (mount_count < MAX_USBS) {
         mount_list[mount_count].devnode = strdup(devnode);
         mount_list[mount_count].mnt_dir  = strdup(mnt_dir);
+        struct statfs sb;
+        int st;
+        st = statfs(mnt_dir, &sb);
+        if (st == 0) {
+            mount_list[mount_count].fsid.val[0] = sb.f_fsid.__val[0];
+            mount_list[mount_count].fsid.val[1] = sb.f_fsid.__val[1];
+        } else {
+            perror("statfs");
+            /* you could choose to remove this entry on error */
+        }
         mount_count++;
     }
     pthread_mutex_unlock(&mount_mutex);
@@ -56,6 +69,7 @@ static void remove_mount_entry(const char *devnode) {
         if (strcmp(mount_list[i].devnode, devnode) == 0) {
             free(mount_list[i].devnode);
             free(mount_list[i].mnt_dir);
+            free(&mount_list[i].fsid);
             /* shift the rest down */
             for (int j = i; j < mount_count - 1; j++) {
                 mount_list[j] = mount_list[j+1];
@@ -67,12 +81,24 @@ static void remove_mount_entry(const char *devnode) {
     pthread_mutex_unlock(&mount_mutex);
 }
 
+int find_mount_by_fsid(__kernel_fsid_t event_fsid, char *out) {
+    for (int i = 0; i < mount_count; i++) {
+        if (mount_list[i].fsid.val[0] == event_fsid.val[0] &&
+            mount_list[i].fsid.val[1] == event_fsid.val[1]) {
+            strncpy(out, mount_list[i].mnt_dir, PATH_MAX);
+            out[PATH_MAX - 1] = '\0';
+            return i;
+        }
+    }
+    return -1;
+}
+
 
 
 void mark_path(const char *path) {
     printf("Marking %s",path);
     fflush(stdout);
-    unsigned long events_content = FAN_CLOSE_WRITE | FAN_MODIFY| FAN_ACCESS|FAN_OPEN;
+    unsigned long events_content = FAN_CLOSE_WRITE | FAN_MODIFY; //| FAN_ACCESS|FAN_OPEN;
     unsigned long events_notify  = FAN_CREATE | FAN_DELETE | FAN_MOVED_FROM | FAN_MOVED_TO|FAN_DELETE_SELF;
 
     // mark for content events
