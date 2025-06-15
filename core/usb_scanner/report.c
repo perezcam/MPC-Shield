@@ -172,3 +172,41 @@ static void cleanup_mount_cache(void)
 {
     free_prev_mounts();
 }
+
+/**
+ * report_metadata_change:
+ *   Compares old vs current stat and prints any permission, size, or mtime differences.
+ */
+void report_metadata_change(const char *filepath,
+                            const struct stat *old,
+                            const struct stat *curr,
+                            pid_t pid)
+{
+    /* Permissions (owner/group/other bits only) */
+    mode_t old_perms = old->st_mode & 0777;
+    mode_t curr_perms = curr->st_mode & 0777;
+    if (old_perms != curr_perms) {
+        printf("[METADATA] %s perms: %03o -> %03o by PID %d\n",
+               filepath, old_perms, curr_perms, pid);
+    }
+
+    /* Size */
+    if (old->st_size != curr->st_size) {
+        printf("[METADATA] %s size: %lld -> %lld by PID %d\n",
+               filepath,
+               (long long)old->st_size,
+               (long long)curr->st_size,
+               pid);
+    }
+
+    /* Modification time */
+    if (old->st_mtime != curr->st_mtime ||
+        old->st_mtime != curr->st_mtime)
+    {
+        printf("[METADATA] %s mtime: %lld.%09ld -> %lld.%09ld by PID %d\n",
+               filepath,
+               (long long)old->st_mtime,  old->st_mtime,
+               (long long)curr->st_mtime, curr->st_mtime,
+               pid);
+    }
+}

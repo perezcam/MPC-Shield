@@ -10,7 +10,8 @@
 #include <openssl/sha.h>
 #include <fcntl.h>
 #include <limits.h>
-#include "path_stat_table.h"
+
+
 
 /**
  * monitor_thread:
@@ -61,9 +62,12 @@ void *monitor_thread(void *arg) {
                         ptr += md->event_len;
                         continue;
                     }
-                    /* Get filename (requires FAN_REPORT_NAME) */
-                    char *name = (char *)md + sizeof(struct fanotify_event_metadata);
-                    snprintf(ev.file.path, PATH_MAX, "%s", name);
+                    /* Get file path*/
+                    char fullpath[PATH_MAX];
+                    if (get_event_fullpath(md, fullpath, sizeof(fullpath)) == 0) {
+                        strncpy(ev.file.path, fullpath, PATH_MAX-1);
+                        ev.file.path[PATH_MAX-1] = '\0';
+                    }
 
                     /* Auto-mark new directories */
                     if (md->mask & (FAN_CREATE | FAN_MOVED_TO)) {
