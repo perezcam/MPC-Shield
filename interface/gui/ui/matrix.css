@@ -1,0 +1,165 @@
+/* ====== matrix.css - Tema Matrix para GTK4 ====== */
+
+
+/* Fondo global y tipografía */
+window, .background, box, notebook, scrolledwindow {
+    background: #050505;
+    color: #00ff00;
+    font-family: "Fira Mono", "Consolas", "Liberation Mono", monospace;
+    font-size: 14px;
+}
+
+/* Etiquetas y títulos */
+label {
+    color: #00ff00;
+    font-family: "Fira Mono", "Consolas", "Liberation Mono", monospace;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-shadow: 0 0 6px #00ff99, 0 0 12px #00800099;
+    font-size: 16px;
+}
+
+/* Entradas de texto */
+entry, spinbutton entry {
+    background: #021a01;
+    color: #00ff00;
+    border: 1.5px solid #00ff00;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 14px;
+    caret-color: #39ff14;
+}
+
+/* Spin buttons */
+spinbutton {
+    background: #030;
+    color: #00ff00;
+    border: 1.5px solid #00ff00;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 14px;
+}
+spinbutton:focus, spinbutton entry:focus {
+    border-color: #39ff14;
+}
+
+/* Botones con efecto Matrix */
+button {
+    background: #050;
+    color: #00ff00;
+    border: 2.5px solid #00ff66;
+    border-radius: 12px;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 16px;
+    letter-spacing: 2px;
+    box-shadow: 0 0 8px #00ff88, 0 0 16px #001f0f;
+    transition: background 0.15s, box-shadow 0.18s, border 0.18s;
+    padding: 8px 26px;
+    animation: matrix-glow 2s infinite alternate;
+}
+
+button:hover {
+    background: #0c2;
+    color: #e0ffe0;
+    border-color: #00ffcc;
+    box-shadow: 0 0 18px #39ff14, 0 0 24px #3dff96;
+}
+
+button:active {
+    background: #003800;
+    border-color: #fff;
+    color: #39ff14;
+    box-shadow: 0 0 6px #00ff44;
+}
+
+button:focus {
+    outline: 2px solid #00ffbb;
+}
+
+@keyframes matrix-glow {
+    0% { box-shadow: 0 0 8px #00ff88; }
+    50% { box-shadow: 0 0 18px #00ff88, 0 0 28px #00880044; }
+    100% { box-shadow: 0 0 8px #00ff88; }
+}
+
+/* TreeView: fondo y líneas Matrix */
+treeview {
+    background: #111;
+    color: #00ff00;
+    font-family: monospace;
+    border: 1.5px solid #00ff00;
+    font-size: 14px;
+}
+
+treeview row:selected, treeview:selected {
+    background: #003800;
+    color: #b6ffb6;
+    border-color: #00ff99;
+}
+
+/* Tabs estilo Matrix */
+notebook > header > tabs > tab {
+    background: #1c1f1c;
+    color: #00ff00;
+    border: 1.5px solid #00ff00;
+    border-radius: 4px;
+    margin: 2px 4px;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+notebook > header > tabs > tab:selected {
+    background: #003300;
+    color: #00ff00;
+    border: 2px solid #00ff99;
+    font-weight: bold;
+}
+
+notebook > header {
+    background: #050505;
+}
+
+/* Scrolled windows */
+scrolledwindow {
+    background: #070f07;
+    border: 1.5px solid #00ff00;
+    border-radius: 6px;
+    margin: 6px;
+}
+
+/* Opcional: barras de scroll Matrix */
+scrollbar, scrollbar slider {
+    background: #003800;
+    border-radius: 6px;
+    min-width: 10px;
+}
+scrollbar slider {
+    background: #00ff00;
+    border-radius: 6px;
+    min-width: 10px;
+    min-height: 36px;
+}
+
+scrollbar:horizontal slider {
+    min-width: 36px;
+    min-height: 10px;
+}
+
+/* Ajuste para cajas y layouts */
+box {
+    background: transparent;
+}
+
+/* Opcional: líneas divisorias */
+separator {
+    background: #008800;
+}
+
+/* Para que todo sea legible con alto contraste */
+* {
+    color: #00ff00;
+    font-family: "Fira Mono", "Consolas", "Liberation Mono", monospace;
+}
+
+/* ---- Personaliza más según tus widgets ---- */

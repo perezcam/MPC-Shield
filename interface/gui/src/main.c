@@ -159,6 +159,15 @@ static void prepare_processes_treeview(GtkBuilder *builder)
 /* ---------------------- on_activate: arranca todo ---------------------- */
 static void on_activate (GtkApplication *app, gpointer data)
 {
+    GtkCssProvider *provider = gtk_css_provider_new();
+    gtk_css_provider_load_from_path(provider, "ui/matrix.css");
+    gtk_style_context_add_provider_for_display(
+        gdk_display_get_default(),
+        GTK_STYLE_PROVIDER(provider),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION
+    );
+    g_object_unref(provider);
+    
     // 1) Cargar la UI
     GtkBuilder *builder = gtk_builder_new_from_file("ui/main_window.ui");
     GtkWindow  *window  = GTK_WINDOW(
