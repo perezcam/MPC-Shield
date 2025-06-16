@@ -7,6 +7,50 @@
 #include <ctype.h>
 #include <stdint.h>
 
+static const char *whitelist[] = {
+    "gnome-shell",
+    "Xorg",
+    "xfwm4",
+    "compiz",
+    "plasmashell",
+    "kwin_x11",
+    "kwin_wayland",
+    "conky",
+    "pulseaudio",
+    "pipewire",
+    "systemd",
+    "init",
+    "bash",
+    "zsh",
+    "tmux",
+    "screen",
+    "ssh",
+    "dbus-daemon",
+    "chromium-browser",
+    "chrome",
+    "firefox",
+    "alacritty",
+    "gnome-terminal-",
+    "konsole",
+    "terminator",
+    "code",           // VSCode
+    "kate",
+    "gedit",
+    "nano",
+    "vim",
+    "emacs",
+    "compiler",       // tu ejemplo
+    NULL              // ¡Importante! Para terminar el array
+};
+
+static gboolean is_whitelisted(const char *proc_name) {
+    for (int i = 0; whitelist[i] != NULL; ++i) {
+        if (strcmp(proc_name, whitelist[i]) == 0)
+            return TRUE;
+    }
+    return FALSE;
+}
+
 // Estructura interna para guardar el estado anterior de cada PID
 typedef struct {
     guint64 cpu_ticks;  // utime + stime
@@ -53,7 +97,7 @@ static gchar* get_proc_name(pid_t pid) {
         return g_strdup("");
     }
     fclose(f);
-    buf[strcspn(buf, "\n")] = '\0';  // quitamos '\n'
+    buf[strcspn(buf, "\n")] = '\0';
     return g_strdup(buf);
 }
 
@@ -66,7 +110,6 @@ static gboolean get_proc_times(pid_t pid, guint64 *ticks) {
     FILE *f = fopen(path, "r");
     if (!f) return FALSE;
 
-    // Formato: pid (comm) state ... utime stime ...
     int    _pid;
     char   comm[256], state;
     unsigned long utime, stime;
@@ -81,7 +124,6 @@ static gboolean get_proc_times(pid_t pid, guint64 *ticks) {
         unsigned long dummy;
         fscanf(f, "%lu", &dummy);
     }
-    // Leemos utime y stime
     if (fscanf(f, "%lu %lu", &utime, &stime) != 2) {
         fclose(f);
         return FALSE;
@@ -116,18 +158,21 @@ static gboolean get_proc_mem(pid_t pid, guint64 *rss_bytes) {
 }
 
 // ----------------------------------------------------------------------------
-// Inicialización: llama esto antes de la primera pasada.
-// cpu_thr: % de CPU; mem_thr_mb: MB de RAM
+// Inicialización y ajuste de umbrales:
+//   cpu_thr: % de CPU; mem_thr_mb: MB de RAM
 // ----------------------------------------------------------------------------
 void monitor_init(gdouble cpu_thr, guint64 mem_thr_mb) {
-    if (prev_table) return;
-    prev_table     = g_hash_table_new_full(
-                        g_direct_hash,
-                        g_direct_equal,
-                        NULL,
-                        g_free        // libera PrevInfo al reemplazar
-                     );
-    prev_total_cpu = read_total_cpu();
+    // Crear tabla una sola vez
+    if (!prev_table) {
+        prev_table     = g_hash_table_new_full(
+                            g_direct_hash,
+                            g_direct_equal,
+                            NULL,
+                            g_free        // libera PrevInfo al reemplazar
+                         );
+        prev_total_cpu = read_total_cpu();
+    }
+    // Ajustar umbrales siempre que se llame
     cpu_threshold  = cpu_thr;
     mem_threshold  = mem_thr_mb * 1024 * 1024;
 }
@@ -143,31 +188,21 @@ GPtrArray* monitor_get_process_list(void) {
     struct dirent *entry;
 
     while ((entry = readdir(dir))) {
-        // Solo directorios numéricos → PIDs
         if (!isdigit(entry->d_name[0])) continue;
-
         pid_t    pid   = atoi(entry->d_name);
         guint64  ticks, mem;
-
         if (!get_proc_times(pid, &ticks) ||
             !get_proc_mem(pid,   &mem))
             continue;
 
-        // Nombre
         gchar *name = get_proc_name(pid);
-
-        // Rellenamos ProcInfo
         ProcInfo *info = g_new0(ProcInfo, 1);
         info->pid       = pid;
         g_strlcpy(info->name, name, sizeof(info->name));
         info->cpu_ticks = ticks;
         info->mem_rss   = mem;
 
-        // Cálculo de %CPU respecto a la pasada anterior
-        PrevInfo *prev = g_hash_table_lookup(
-                            prev_table,
-                            GINT_TO_POINTER(pid)
-                         );
+        PrevInfo *prev = g_hash_table_lookup(prev_table, GINT_TO_POINTER(pid));
         if (prev && (total_cpu_now > prev_total_cpu)) {
             guint64 dt     = ticks - prev->cpu_ticks;
             guint64 dt_tot = total_cpu_now - prev_total_cpu;
@@ -176,24 +211,21 @@ GPtrArray* monitor_get_process_list(void) {
             info->cpu_percent = 0.0;
         }
 
-        // Detección de picos
         info->suspicious =
             (info->cpu_percent > cpu_threshold) ||
             (info->mem_rss    > mem_threshold);
 
-        // Lo añadimos al array
-        g_ptr_array_add(infos, info);
-
-        // Actualizamos la tabla de previos
+         // ---- SOLO AÑADIR SI ES SOSPECHOSO Y NO ESTÁ EN LA LISTA BLANCA ----
+        if (info->suspicious && !is_whitelisted(info->name)) {
+            g_ptr_array_add(infos, info);
+        } else {
+            g_free(info);
+        }
+        
         PrevInfo *new_prev = g_new0(PrevInfo, 1);
         new_prev->cpu_ticks = info->cpu_ticks;
         new_prev->mem_rss   = info->mem_rss;
-        g_hash_table_replace(
-            prev_table,
-            GINT_TO_POINTER(pid),
-            new_prev
-        );
-
+        g_hash_table_replace(prev_table, GINT_TO_POINTER(pid), new_prev);
         g_free(name);
     }
 

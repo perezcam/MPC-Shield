@@ -9,55 +9,120 @@
     <property name="default-height">600</property>
 
     <child>
-      <!-- Notebook con tres páginas -->
-      <object class="GtkNotebook" id="notebook_main">
-        <property name="tab-pos">top</property>
+      <!-- Caja principal vertical -->
+      <object class="GtkBox" id="main_box">
+        <property name="orientation">vertical</property>
+        <property name="spacing">6</property>
+        <property name="hexpand">True</property>
+        <property name="vexpand">True</property>
 
-        <!-- Página 1: Dispositivos -->
+        <!-- Campos de umbral en caja horizontal -->
         <child>
-          <object class="GtkScrolledWindow" id="scrolled_devices">
-            <property name="hexpand">True</property>
-            <property name="vexpand">True</property>
+          <object class="GtkBox" id="threshold_box">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">6</property>
+            <property name="margin-start">6</property>
+            <property name="margin-end">6</property>
+            <property name="margin-top">6</property>
+            <property name="margin-bottom">6</property>
+
+            <!-- CPU Threshold -->
             <child>
-              <object class="GtkTreeView" id="tree_devices"/>
+              <object class="GtkLabel" id="label_cpu_threshold">
+                <property name="label">CPU Threshold (%)</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="cpu_threshold_spin">
+                <property name="adjustment">
+                  <object class="GtkAdjustment">
+                    <property name="lower">0</property>
+                    <property name="upper">100</property>
+                    <property name="step_increment">1</property>
+                    <property name="page_increment">5</property>
+                    <property name="value">50</property>
+                  </object>
+                </property>
+                <property name="numeric">TRUE</property>
+              </object>
+            </child>
+
+            <!-- Memory Threshold -->
+            <child>
+              <object class="GtkLabel" id="label_mem_threshold">
+                <property name="label">Mem Threshold (MB)</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="mem_threshold_spin">
+                <property name="adjustment">
+                  <object class="GtkAdjustment">
+                    <property name="lower">0</property>
+                    <property name="upper">4096</property>
+                    <property name="step_increment">10</property>
+                    <property name="page_increment">50</property>
+                    <property name="value">200</property>
+                  </object>
+                </property>
+                <property name="numeric">TRUE</property>
+              </object>
             </child>
           </object>
         </child>
-        <child type="tab">
-          <object class="GtkLabel">
-            <property name="label">Dispositivos</property>
-          </object>
-        </child>
 
-        <!-- Página 2: Puertos -->
+        <!-- Notebook con tres páginas -->
         <child>
-          <object class="GtkScrolledWindow" id="scrolled_ports">
-            <property name="hexpand">True</property>
-            <property name="vexpand">True</property>
-            <child>
-              <object class="GtkTreeView" id="tree_ports"/>
-            </child>
-          </object>
-        </child>
-        <child type="tab">
-          <object class="GtkLabel">
-            <property name="label">Puertos</property>
-          </object>
-        </child>
+          <object class="GtkNotebook" id="notebook_main">
+            <property name="tab-pos">top</property>
 
-        <!-- Página 3: Procesos -->
-        <child>
-          <object class="GtkScrolledWindow" id="scrolled_processes">
-            <property name="hexpand">True</property>
-            <property name="vexpand">True</property>
+            <!-- Página 1: Dispositivos -->
             <child>
-              <object class="GtkTreeView" id="tree_processes"/>
+              <object class="GtkScrolledWindow" id="scrolled_devices">
+                <property name="hexpand">True</property>
+                <property name="vexpand">True</property>
+                <child>
+                  <object class="GtkTreeView" id="tree_devices"/>
+                </child>
+              </object>
             </child>
-          </object>
-        </child>
-        <child type="tab">
-          <object class="GtkLabel">
-            <property name="label">Procesos</property>
+            <child type="tab">
+              <object class="GtkLabel">
+                <property name="label">Dispositivos</property>
+              </object>
+            </child>
+
+            <!-- Página 2: Puertos -->
+            <child>
+              <object class="GtkScrolledWindow" id="scrolled_ports">
+                <property name="hexpand">True</property>
+                <property name="vexpand">True</property>
+                <child>
+                  <object class="GtkTreeView" id="tree_ports"/>
+                </child>
+              </object>
+            </child>
+            <child type="tab">
+              <object class="GtkLabel">
+                <property name="label">Puertos</property>
+              </object>
+            </child>
+
+            <!-- Página 3: Procesos -->
+            <child>
+              <object class="GtkScrolledWindow" id="scrolled_processes">
+                <property name="hexpand">True</property>
+                <property name="vexpand">True</property>
+                <child>
+                  <object class="GtkTreeView" id="tree_processes"/>
+                </child>
+              </object>
+            </child>
+            <child type="tab">
+              <object class="GtkLabel">
+                <property name="label">Procesos</property>
+              </object>
+            </child>
+
           </object>
         </child>
 
