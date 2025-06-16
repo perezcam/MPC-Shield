@@ -13,7 +13,6 @@
 #include <stdlib.h>
 
 
-
 /**
  * monitor_thread:
  *   - Listens on both fanotify descriptors (notify and content).
@@ -59,18 +58,19 @@ void *monitor_thread(void *arg) {
                 if (fds[i].fd == g_fan_notify_fd) {
                     /* Notify FD: handle create/delete/move events */
                     if (!(md->mask & (FAN_CREATE | FAN_DELETE |
-                                      FAN_MOVED_FROM | FAN_MOVED_TO))) {
+                                      FAN_MOVED_FROM | FAN_MOVED_TO | FAN_ATTRIB))) {
                         ptr += md->event_len;
                         continue;
                     }
-                    printf("NOTIFY EVENT\n");fflush(stdout);
                     /* Get file path*/
                     char fullpath[PATH_MAX];
                     if (get_event_fullpath(md, fullpath, sizeof(fullpath)) == 0) {
                         strncpy(ev.file.path, fullpath, PATH_MAX-1);
                         ev.file.path[PATH_MAX-1] = '\0';
                     }
-                    printf("PATH %s\n" , ev.file.path );fflush(stdout);
+
+                    //printf("DELETE: %lld", md->mask&FAN_DELETE);
+                    //printf("PATH: %s\n", fullpath);
 
                     /* Auto-mark new directories */
                     if (md->mask & (FAN_CREATE | FAN_MOVED_TO)) {

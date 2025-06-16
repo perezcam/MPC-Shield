@@ -94,10 +94,13 @@ void *worker_thread(void *arg) {
             /* PID already finished */
             continue;
         }
-
+        
         struct stat st;
         if (stat(ev.file.path, &st) != 0) {
-            /* the file already exists */
+            report_file_deletion(ev.file.path,ev.proc.pid);
+            /*
+            PENDIENTE INSERTAR LOGICA DE SOSPECHOSO PARA ELIMINACIONES
+            */
             continue;
         }
 
@@ -124,7 +127,7 @@ void *worker_thread(void *arg) {
 
         report_file_modification(ev.file.path, ev.mask, ev.proc.pid);
         /*  Only on modification events, compare & update PST */
-        if (ev.mask & (FAN_MODIFY | FAN_CLOSE_WRITE)) {
+        if (ev.mask & (FAN_ATTRIB|FAN_MODIFY|FAN_MOVED_TO)) {
             struct stat old;
             if (pst_lookup(&path_table, ev.file.path, &old) == 0) {
                 report_metadata_change(ev.file.path, &old, &st, ev.proc.pid);

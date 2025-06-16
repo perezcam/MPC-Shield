@@ -86,6 +86,7 @@ extern void  report_current_mounts(void);
 extern void  report_file_modification(const char *filepath, uint64_t mask, pid_t pid);
 extern void  report_suspicious(pid_t pid, const char *exe_path);
 extern void report_metadata_change(const char *filepath, const struct stat *old_s, const struct stat *new_s, pid_t pid);
+void report_file_deletion(const char *filepath, pid_t pid);
 
 /*path_stat_table.c*/
 extern void pst_init(path_stat_table_t *tbl);

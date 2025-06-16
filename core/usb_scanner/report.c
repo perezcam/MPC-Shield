@@ -185,6 +185,7 @@ void report_metadata_change(const char *filepath,
     /* Permissions (owner/group/other bits only) */
     mode_t old_perms = old->st_mode & 0777;
     mode_t curr_perms = curr->st_mode & 0777;
+    
     if (old_perms != curr_perms) {
         printf("[METADATA] %s perms: %03o -> %03o by PID %d\n",
                filepath, old_perms, curr_perms, pid);
@@ -209,4 +210,18 @@ void report_metadata_change(const char *filepath,
                (long long)curr->st_mtime, curr->st_mtime,
                pid);
     }
+}
+
+
+void report_file_deletion(const char *filepath, pid_t pid)
+{
+    char ts[64];
+    time_t t = time(NULL);
+    struct tm tm;
+    localtime_r(&t, &tm);
+    strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &tm);
+
+    printf("[%s] File deleted: %s (pid=%d)\n",
+           ts, filepath, (int)pid);
+    fflush(stdout);
 }

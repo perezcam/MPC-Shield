@@ -40,7 +40,8 @@ g_fan_notify_fd = fanotify_init(
     FAN_CLOEXEC
   | FAN_NONBLOCK
   | FAN_CLASS_NOTIF       // sólo md, sin fd
-  | FAN_REPORT_DFID_NAME, // nombre tras la metadata + dir-FID
+  | FAN_REPORT_DFID_NAME // nombre tras la metadata + dir-FID
+  | FAN_REPORT_FID,
   O_RDONLY
 | O_LARGEFILE
 );
