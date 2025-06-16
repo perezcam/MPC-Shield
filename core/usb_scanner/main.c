@@ -37,7 +37,8 @@ int main() {
         FAN_CLOEXEC
     | FAN_NONBLOCK
     | FAN_CLASS_NOTIF       // class NOTIF: md without fd
-    | FAN_REPORT_DFID_NAME, // entry name + dir FID 
+    | FAN_REPORT_DFID_NAME // entry name + dir FID 
+    | FAN_REPORT_FID,
         O_RDONLY
     | O_LARGEFILE
     );

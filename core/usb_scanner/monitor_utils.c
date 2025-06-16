@@ -39,47 +39,24 @@ int get_event_fullpath(struct fanotify_event_metadata *md,
         return -1;
     }
 
-        // 2) Lookup which mount this event came from (by comparing FSID)
-        __kernel_fsid_t event_fsid = fid->fsid;
-        char mnt_dir[PATH_MAX];
-        int mi = find_mount_by_fsid(event_fsid, mnt_dir);
-        if (mi < 0) {
-            fprintf(stderr, "No mount found for fsid\n");
-            return -1;
-        }
+    // 2) Lookup which mount this event came from (by comparing FSID)
+    __kernel_fsid_t event_fsid = fid->fsid;
+    char mnt_dir[PATH_MAX];
+    int mi = find_mount_by_fsid(event_fsid, mnt_dir);
+    if (mi < 0) {
+        fprintf(stderr, "No mount found for fsid\n");
+        return -1;
+    }
 
-        printf("MNT_DIR %s\n", mnt_dir);
-
-        // 3) Open any FD on that filesystem (the mount-root you recorded)
-        int mount_fd = open(mnt_dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-        if (mount_fd < 0) { perror("open mount_dir"); return -1; }
-
-        printf("mount fd: %d\n", mount_fd);
-
-        /* ---------- INSPECCIÓN DEL FD ------------- */
-        // char fdinfo[64];
-        // snprintf(fdinfo, sizeof fdinfo, "/proc/self/fdinfo/%d", mount_fd);
-        // FILE *fp = fopen(fdinfo, "r");
-        // if (fp) {
-        //     char line[128];
-        //     fprintf(stderr, "=== fdinfo %d ===\n", mount_fd);
-        //     while (fgets(line, sizeof line, fp)) {
-        //         fputs(line, stderr);   /* imprime mnt_id, flags, pos... */
-        //     }
-        //     fclose(fp);
-        // } else {
-        //     perror("fopen fdinfo");
-        // }
-
+    // 3) Open any FD on that filesystem (the mount-root you recorded)
+    int mount_fd = open(mnt_dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (mount_fd < 0) { perror("open mount_dir"); return -1; }
 
     // 4) Turn the handle into a real FD
     int event_fd = open_by_handle_at(mount_fd, file_handle, O_RDONLY| O_DIRECTORY);
     close(mount_fd);  // we only needed mount_fd for the syscall
     if (event_fd < 0) {
-        if (errno == ESTALE) {
-            fprintf(stderr, "Stale handle (file deleted)\n");
-        } else {
-        printf("ERROR\n");
+        if (errno != ESTALE) {
             perror("open_by_handle_at");
         }
         return -1;
