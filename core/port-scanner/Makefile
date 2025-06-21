@@ -1,5 +1,7 @@
 # core/port-scanner/Makefile
 
+#Crea las librerias necesarias para interactuar con la gui
+
 CC      := gcc
 AR      := ar rcs
 

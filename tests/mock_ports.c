@@ -17,10 +17,11 @@ typedef struct {
 } PortInfo;
 
 static PortInfo ports[] = {
-    {22, "SSH\r\n"},
-    {443, "HTTPS\r\n"},
-    {4444, "shell\r\n"},
-    {3127, "no tengo banner peligroso\r\n"},
+    {3127, "este puerto es malo\r\n"},
+    {23, "logi: mauricio jajaja\r\n"},
+    {514, "shell\r\n"},
+    {15, "netbus jjajaja soy maloooo y no lo sabes\r\n"},
+    {16, "hola soy amigable no muerdo\r\n"},
 };
 static const size_t N_PORTS = sizeof ports / sizeof ports[0];
 

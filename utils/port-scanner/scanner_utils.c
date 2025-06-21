@@ -12,21 +12,21 @@
 #define HOST "127.0.0.1"
 #define BANNER_TIMEOUT_SEC 2
 
-
-
-
 static const BannerExpectation expectations[] = {
     { 21,   "220"        },  // FTP
     { 22,   "SSH-"       },  // SSH
-    { 23,   "login:"     },  // Telnet (muchas implementaciones)
+    { 23,   "login:"     },  // Telnet 
     { 25,   "220"        },  // SMTP
+    { 80,   ""           },  // HTTP usually opened in Ubuntu
     {110,   "+OK"        },  // POP3
 
     {143,   "* OK"       },  // IMAP
     {119,   "200"        },  // NNTP
     {513,   "login:"     },  // rlogin
-    {514,   "shell"      },  // rsh (a veces)
+    {514,   "shell"      },  // rsh
+    {631,   ""           },  // CUPS, manage printers (usually opened in Ubuntu)
     {1521,  "TNS-"       },  // Oracle TNS Listener
+    {5432,  ""           },  // PostgreSQL (usually opened in Ubuntu)
 };
 
 //Set global variable for total number of expectations
@@ -119,7 +119,8 @@ const char *get_expected_banner(int port) {
 //Check if original banner contains the expected word
 int is_expected_banner(int port, const char *banner) {
     const char *exp = get_expected_banner(port);
-    if (!exp || !banner) return 0;
+    if (!exp) return 1; //if exp == "" is because this port usually doesn't have a banner
+    if (!banner) return 0;
 
     static char lower_banner[512];
     static char lower_exp[64];
@@ -146,7 +147,6 @@ const char *search_dangerous_words(const char *banner, int n) {
 
     const char *danger_words[] = {
         "meterpreter", "netbus", "back orifice", "sub7", 
-        "shell",
         "cobalt strike",
         "empire", "pupy", "quasar rat"
     };
