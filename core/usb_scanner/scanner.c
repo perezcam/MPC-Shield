@@ -128,6 +128,7 @@ void mark_path(const char *path) {
 static int mark_cb(const char *fpath, const struct stat *sb,
     int typeflag, struct FTW *ftwbuf)
 {
+    total++;
     // Marca directorios para crear nuevas marcas recursivas
     if (typeflag == FTW_D) {
         mark_path(fpath);
@@ -160,6 +161,7 @@ static int unmark_cb(const char *fpath, const struct stat *sb,
     if (typeflag == FTW_F) {
         pst_remove(&path_table,fpath);
     }
+    total--;
     return 0;
 }
 

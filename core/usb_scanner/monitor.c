@@ -62,6 +62,8 @@ void *monitor_thread(void *arg) {
                         ptr += md->event_len;
                         continue;
                     }
+                    if(md->mask & (FAN_CREATE ))total++;
+                    if(md->mask & (FAN_DELETE ))total--;
                     /* Get file path*/
                     char fullpath[PATH_MAX];
                     if (get_event_fullpath(md, fullpath, sizeof(fullpath)) == 0) {

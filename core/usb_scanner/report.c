@@ -57,15 +57,24 @@ void report_file_modification(const char *filepath,
         uint64_t    bit;
         const char *name;
     } causes[] = {
-        { FAN_CREATE,     "create"    },
-        { FAN_DELETE,     "delete"    },
-        { FAN_MOVED_FROM, "move-from" },
-        { FAN_MOVED_TO,   "move-to"   },
-        { FAN_MODIFY,     "modify"    },
-        { FAN_ATTRIB,     "attrib"    },
-        { FAN_ACCESS,   "access"   },
-        { FAN_OPEN,     "open"     },
-        { 0,              NULL         }
+        { FAN_ACCESS,          "access"         }, // read access
+        { FAN_MODIFY,          "modify"         }, // file write
+        { FAN_ATTRIB,          "attrib"         }, // metadata change
+        { FAN_CLOSE_WRITE,     "close-write"    }, // writable fd closed
+        { FAN_CLOSE_NOWRITE,   "close-nonwrite" }, // non-writable fd closed
+        { FAN_OPEN,            "open"           }, // file opened
+        { FAN_OPEN_EXEC,       "open-exec"      }, // execve() on file
+        { FAN_MOVED_FROM,      "move-from"      }, // file moved out of watched dir
+        { FAN_MOVED_TO,        "move-to"        }, // file moved into watched dir
+        { FAN_CREATE,          "create"         }, // file or dir created
+        { FAN_DELETE,          "delete"         }, // file or dir deleted
+        { FAN_DELETE_SELF,     "delete-self"    }, // watched file/directory itself deleted
+        { FAN_MOVE_SELF,       "move-self"      }, // watched file/directory itself moved
+        { FAN_Q_OVERFLOW,      "queue-overflow" }, // event queue overflowed
+        { FAN_OPEN_PERM,       "open-perm"      }, // permission check for open
+        { FAN_ACCESS_PERM,     "access-perm"    }, // permission check for access
+        { FAN_EVENT_ON_CHILD,  "event-on-child" }, // event on a child of special FD
+        { 0,                   NULL             }
     };
 
     char cause_buf[128] = "";

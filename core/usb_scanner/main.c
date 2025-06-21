@@ -18,6 +18,9 @@ int g_fan_notify_fd  = -1;
 pthread_mutex_t path_table_mutex;
 path_stat_table_t path_table;
 
+int total=0;
+int suspicious=0;
+
 int main() {
     /* Initialize content fd*/
     g_fan_content_fd = fanotify_init(

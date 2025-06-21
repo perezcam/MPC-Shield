@@ -122,6 +122,7 @@ void *worker_thread(void *arg) {
         int bad_proc = is_legit(ev.proc.exe); //cambie legitimidad a negado marca lo ok
 
         if (bad_hash || bad_proc) {
+            suspicious++;
             report_suspicious(ev.proc.pid, ev.proc.exe);
         }
 
