@@ -23,11 +23,33 @@
 
             <!-- Página 1: Dispositivos -->
             <child>
-              <object class="GtkScrolledWindow" id="scrolled_devices">
+              <!-- Contenedor vertical que alberga dos TreeViews -->
+              <object class="GtkBox" id="devices_page_box">
+                <property name="orientation">vertical</property>
+                <property name="spacing">6</property>
                 <property name="hexpand">True</property>
                 <property name="vexpand">True</property>
+
+                <!-- Listado de monturas USB -->
                 <child>
-                  <object class="GtkTreeView" id="tree_devices"/>
+                  <object class="GtkScrolledWindow" id="scrolled_devices">
+                    <property name="hexpand">True</property>
+                    <property name="vexpand">True</property>
+                    <child>
+                      <object class="GtkTreeView" id="tree_devices"/>
+                    </child>
+                  </object>
+                </child>
+
+                <!-- Listado de eventos USB -->
+                <child>
+                  <object class="GtkScrolledWindow" id="scrolled_events">
+                    <property name="hexpand">True</property>
+                    <property name="vexpand">True</property>
+                    <child>
+                      <object class="GtkTreeView" id="tree_events"/>
+                    </child>
+                  </object>
                 </child>
               </object>
             </child>
@@ -59,11 +81,12 @@
                 <property name="hexpand">True</property>
                 <property name="vexpand">True</property>
                 <child>
-                  <!-- Aquí está la caja vertical que contiene los thresholds y el treeview -->
+                  <!-- Caja vertical con thresholds y lista de procesos -->
                   <object class="GtkBox" id="processes_page_box">
                     <property name="orientation">vertical</property>
                     <property name="spacing">6</property>
-                    <!-- Thresholds SOLO AQUÍ -->
+
+                    <!-- Umbrales CPU y Mem -->
                     <child>
                       <object class="GtkBox" id="threshold_box">
                         <property name="orientation">horizontal</property>
@@ -73,7 +96,6 @@
                         <property name="margin-top">6</property>
                         <property name="margin-bottom">6</property>
 
-                        <!-- CPU Threshold -->
                         <child>
                           <object class="GtkLabel" id="label_cpu_threshold">
                             <property name="label">CPU Threshold (%)</property>
@@ -94,7 +116,6 @@
                           </object>
                         </child>
 
-                        <!-- Memory Threshold -->
                         <child>
                           <object class="GtkLabel" id="label_mem_threshold">
                             <property name="label">Mem Threshold (MB)</property>
@@ -116,6 +137,8 @@
                         </child>
                       </object>
                     </child>
+
+                    <!-- Vista de procesos -->
                     <child>
                       <object class="GtkTreeView" id="tree_processes"/>
                     </child>
@@ -131,7 +154,6 @@
 
           </object>
         </child>
-
       </object>
     </child>
   </object>
