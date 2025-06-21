@@ -30,9 +30,10 @@
                 <!-- Sección de monturas USB (altura fija) -->
                 <child>
                   <object class="GtkScrolledWindow" id="scrolled_mounts">
-                    <!-- No expand para que sea pequeña -->
+                    <!-- Altura fija -->
                     <property name="hexpand">True</property>
                     <property name="vexpand">False</property>
+                    <property name="height-request">80</property>
                     <child>
                       <object class="GtkTreeView" id="tree_mounts"/>
                     </child>
@@ -79,11 +80,12 @@
                 <property name="hexpand">True</property>
                 <property name="vexpand">True</property>
                 <child>
+                  <!-- Caja que contiene thresholds y lista -->
                   <object class="GtkBox" id="processes_page_box">
                     <property name="orientation">vertical</property>
                     <property name="spacing">6</property>
 
-                    <!-- Thresholds -->
+                    <!-- Línea de thresholds -->
                     <child>
                       <object class="GtkBox" id="threshold_box">
                         <property name="orientation">horizontal</property>
@@ -93,6 +95,7 @@
                         <property name="margin-top">6</property>
                         <property name="margin-bottom">6</property>
 
+                        <!-- CPU Threshold -->
                         <child>
                           <object class="GtkLabel" id="label_cpu_threshold">
                             <property name="label">CPU Threshold (%)</property>
@@ -113,6 +116,7 @@
                           </object>
                         </child>
 
+                        <!-- Mem Threshold -->
                         <child>
                           <object class="GtkLabel" id="label_mem_threshold">
                             <property name="label">Mem Threshold (MB)</property>

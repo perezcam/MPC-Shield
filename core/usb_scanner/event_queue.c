@@ -1,59 +1,57 @@
+// event_queue.c
+#define _GNU_SOURCE
+
 #include "shared.h"
 #include <pthread.h>
-#include <string.h>
+#include <stdlib.h>
 
+/* Tamaño máximo de la cola */
+#ifndef QUEUE_SIZE
+#define QUEUE_SIZE 1024
+#endif
 
-
+/* Cola circular de eventos */
 static EventInfo queue[QUEUE_SIZE];
 static int head = 0;
 static int tail = 0;
 
-/* Mutex para proteger acceso concurrente a cabeza/cola */
+/* Mutex y condición para sincronizar productor/consumidor */
 static pthread_mutex_t qlock = PTHREAD_MUTEX_INITIALIZER;
-/* Condición para notificar a pop_event que hay un elemento disponible */
-static pthread_cond_t qcond = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t  qcond = PTHREAD_COND_INITIALIZER;
 
-/*
+/**
  * push_event:
- *   Mete “ev” en la cola. 
- *   Si la cola está llena (tail+1 == head), simplemente sobreescribimos el elemento más antiguo
- *   o bien podemos esperar hasta que el consumidor avance. En este ejemplo optamos por sobreescribir:
+ *   Mete “ev” en la cola. Si está llena, descarta el más antiguo.
  */
 void push_event(EventInfo ev) {
     pthread_mutex_lock(&qlock);
 
-    int siguiente = (tail + 1) % QUEUE_SIZE;
-    if (siguiente == head) {
-        // La cola está llena. Podríamos:
-        //  a) Esperar a que pop_event saque elementos, o
-        //  b) Sobreescribir el más antiguo (head). 
-        // Aquí elegimos sobreescribir: avanzamos head para descartar el evento más viejo.
+    int next = (tail + 1) % QUEUE_SIZE;
+    if (next == head) {
+        /* Cola llena: descartamos el evento más viejo avanzando head */
         head = (head + 1) % QUEUE_SIZE;
     }
 
-    // Copiamos el EventInfo entero en la posición “tail”
     queue[tail] = ev;
-    tail = siguiente;
+    tail = next;
 
-    // Avisamos a cualquier pop_event() que esté bloqueado
+    /* Despierta a cualquier pop_event() bloqueado */
     pthread_cond_signal(&qcond);
     pthread_mutex_unlock(&qlock);
 }
 
-/*
+/**
  * pop_event:
- *   Espera hasta que haya un EventInfo en la cola, lo saca y lo devuelve en *ev.
- *   Siempre retorna 0 (podrías cambiarlo para devolver -1 en caso de error).
+ *   Espera hasta que haya un evento en la cola, lo extrae y lo devuelve en *ev.
  */
 void pop_event(EventInfo *ev) {
     pthread_mutex_lock(&qlock);
 
-    // Mientras no haya elementos (head == tail), esperar
+    /* Si la cola está vacía, esperamos */
     while (head == tail) {
         pthread_cond_wait(&qcond, &qlock);
     }
 
-    // Sacar el elemento en “head” y avanzar head
     *ev = queue[head];
     head = (head + 1) % QUEUE_SIZE;
 

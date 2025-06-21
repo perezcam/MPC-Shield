@@ -4,35 +4,31 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <limits.h>
-#include <linux/limits.h>    // PATH_MAX
+#include <linux/limits.h>    // For PATH_MAX
 #include <sys/fanotify.h>
 #include <fcntl.h>
-#include "shared.h"          // declara g_fan_content_fd, g_fan_notify_fd, path_table_mutex, path_table, event_queue, scann_start/stop
+#include "shared.h"          // declara g_fan_content_fd, g_fan_notify_fd, path_table_mutex, path_table, scann_start/stop
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 
-/* número de hilos worker */
+/* Número de hilos worker */
 #define NUM_WORKERS 2
 
-/* identificadores de hilos */
+/* Identificadores de hilos */
 static pthread_t scan_tid;
 static pthread_t mon_tid;
 static pthread_t workers[NUM_WORKERS];
 
 /**
  * scann_start:
- *   - Crea la cola de eventos GTK (GAsyncQueue).
  *   - Inicializa fanotify (content + notify).
  *   - Lanza scanner_thread, monitor_thread y worker_thread(s).
- *   - Sale con EXIT_FAILURE si falla algo crítico.
+ *   - Sale con EXIT_FAILURE si algo crítico falla.
  */
 void scann_start(void)
 {
-    /* 0) Cola para eventos de la interfaz */
-    event_queue = g_async_queue_new();
-
     /* 1) FD de contenido (metadatos + fd) */
     g_fan_content_fd = fanotify_init(
         FAN_CLOEXEC | FAN_NONBLOCK | FAN_CLASS_CONTENT,
@@ -80,7 +76,7 @@ void scann_start(void)
     for (int i = 0; i < NUM_WORKERS; i++) {
         if (pthread_create(&workers[i], NULL, worker_thread, NULL) != 0) {
             perror("pthread_create worker_thread");
-            /* seguimos intentando con los demás */
+            /* continuamos intentando con los demás */
         }
     }
 }
@@ -89,7 +85,6 @@ void scann_start(void)
  * scann_stop:
  *   - Cancela y une todos los hilos.
  *   - Cierra los file descriptors de fanotify.
- *   - Libera la cola de eventos GTK.
  */
 void scann_stop(void)
 {
@@ -107,13 +102,7 @@ void scann_stop(void)
         pthread_join(workers[i], NULL);
     }
 
-    /* 3) Cerrar fanotify fds */
+    /* 3) Cerrar fds de fanotify */
     if (g_fan_content_fd >= 0) close(g_fan_content_fd);
     if (g_fan_notify_fd  >= 0) close(g_fan_notify_fd);
-
-    /* 4) Limpiar cola GTK */
-    if (event_queue) {
-        g_async_queue_unref(event_queue);
-        event_queue = NULL;
-    }
 }

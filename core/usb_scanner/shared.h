@@ -55,6 +55,11 @@ typedef struct {
     pst_entry_t entries[MAX_ENTRIES];
     int         count;
 } path_stat_table_t;
+typedef struct {
+    char *time;   // p. ej. "2025-06-21 12:00:00"
+    char *path;   // la ruta del fichero o del ejecutable
+    char *cause;  // el motivo (create, delete, suspicious, etc)
+} GuiEvent;
 
 /* ---------------------------------------------------------------- */
 /*   Variables globales DEFINIDAS en main.c (solo aquí)            */
@@ -63,7 +68,8 @@ extern int               g_fan_content_fd;
 extern int               g_fan_notify_fd;
 extern pthread_mutex_t   path_table_mutex;
 extern path_stat_table_t path_table;
-extern GAsyncQueue      *event_queue;
+extern GAsyncQueue *event_queue;
+
 
 /* ---------------------------------------------------------------- */
 /*   Funciones para arrancar/parar el backend (scann.c)            */
