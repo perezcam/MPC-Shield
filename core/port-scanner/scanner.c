@@ -39,7 +39,7 @@ static void *scan_thread(void *arg) {
         //secure: 0: warning, 1: ok, -1: critical 
         int secure = (port_class == 1)? is_expected_banner(port, banner) : 
                     (found_word != NULL)? -1 : 
-                    (port_class == -1)? 0 : 1;
+                    (port_class == -1)? -1 : 0;
 
         // Prepare output
         ScanOutput entry;
@@ -69,7 +69,6 @@ ScanResult scan_ports(void) {
     
     output = malloc(sizeof(ScanOutput) * MAX_PORTS);
     if (!output) {
-        //TODO: MANEJO DE ERRORES
         perror("malloc");
         exit(EXIT_FAILURE);
     }
@@ -95,22 +94,17 @@ ScanResult scan_ports(void) {
 void free_result(ScanResult *res)
 {
     if (!res || !res->data)
-    // 1) Liberar las cadenas duplicadas en cada ScanOutput
         return;
 
-    // 1) Liberar las cadenas duplicadas en cada ScanOutput
     for (int i = 0; i < res->size; i++) {
-        // strdup() devolvió punteros a memoria heap para banner y dangerous_word
         free((char*)res->data[i].banner);
         free((char*)res->data[i].dangerous_word);
         free((char*)res->data[i].security_level);
         free((char*)res->data[i].classification);
     }
 
-    // 2) Liberar el array de ScanOutput
     free(res->data);
-
-    // 3) Evitar dangling pointers
+    
     res->data = NULL;
     res->size = 0;
 }
