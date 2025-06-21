@@ -21,33 +21,31 @@
           <object class="GtkNotebook" id="notebook_main">
             <property name="tab-pos">top</property>
 
-            <!-- Página 1: Dispositivos -->
+            <!-- Página 1: Dispositivos (Monturas + Eventos USB) -->
             <child>
-              <!-- Contenedor vertical que alberga dos TreeViews -->
-              <object class="GtkBox" id="devices_page_box">
+              <object class="GtkBox" id="usb_tab_box">
                 <property name="orientation">vertical</property>
                 <property name="spacing">6</property>
-                <property name="hexpand">True</property>
-                <property name="vexpand">True</property>
 
-                <!-- Listado de monturas USB -->
+                <!-- Sección de monturas USB (altura fija) -->
                 <child>
-                  <object class="GtkScrolledWindow" id="scrolled_devices">
+                  <object class="GtkScrolledWindow" id="scrolled_mounts">
+                    <!-- No expand para que sea pequeña -->
                     <property name="hexpand">True</property>
-                    <property name="vexpand">True</property>
+                    <property name="vexpand">False</property>
                     <child>
-                      <object class="GtkTreeView" id="tree_devices"/>
+                      <object class="GtkTreeView" id="tree_mounts"/>
                     </child>
                   </object>
                 </child>
 
-                <!-- Listado de eventos USB -->
+                <!-- Sección de eventos USB (ocupa el resto) -->
                 <child>
-                  <object class="GtkScrolledWindow" id="scrolled_events">
+                  <object class="GtkScrolledWindow" id="scrolled_usb_events">
                     <property name="hexpand">True</property>
                     <property name="vexpand">True</property>
                     <child>
-                      <object class="GtkTreeView" id="tree_events"/>
+                      <object class="GtkTreeView" id="tree_usb_events"/>
                     </child>
                   </object>
                 </child>
@@ -81,12 +79,11 @@
                 <property name="hexpand">True</property>
                 <property name="vexpand">True</property>
                 <child>
-                  <!-- Caja vertical con thresholds y lista de procesos -->
                   <object class="GtkBox" id="processes_page_box">
                     <property name="orientation">vertical</property>
                     <property name="spacing">6</property>
 
-                    <!-- Umbrales CPU y Mem -->
+                    <!-- Thresholds -->
                     <child>
                       <object class="GtkBox" id="threshold_box">
                         <property name="orientation">horizontal</property>
@@ -138,7 +135,7 @@
                       </object>
                     </child>
 
-                    <!-- Vista de procesos -->
+                    <!-- Árbol de procesos -->
                     <child>
                       <object class="GtkTreeView" id="tree_processes"/>
                     </child>
@@ -154,6 +151,7 @@
 
           </object>
         </child>
+
       </object>
     </child>
   </object>

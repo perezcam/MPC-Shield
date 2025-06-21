@@ -30,16 +30,16 @@ enum {
     N_PORT_COLS
 };
 
-/* --------------- Índices de columnas Dispositivos ---------------- */
+/* --------------- Índices de columnas Monturas USB ---------------- */
 enum {
-    COL_DEVICE_PATH,
-    N_DEV_COLS
+    COL_MOUNT_PATH,
+    N_MOUNT_COLS
 };
 
-/* -------------- Índice de columna Eventos USB -------------------- */
+/* ----------- Índices de columna Eventos USB (solo texto) --------- */
 enum {
-    COL_EVENT_MSG,
-    N_EVENT_COLS
+    COL_USB_EVENT_MSG,
+    N_USB_EVENT_COLS
 };
 
 /* --------------- Índices de columnas Procesos --------------------- */
@@ -61,10 +61,10 @@ typedef struct {
 /* Prototipos GTK */
 static gboolean update_ports           (gpointer user_data);
 static void    prepare_ports_treeview  (GtkBuilder *builder);
-static gboolean update_devices         (gpointer user_data);
-static void    prepare_devices_treeview(GtkBuilder *builder);
-static gboolean update_device_events   (gpointer user_data);
-static void    prepare_events_treeview (GtkBuilder *builder);
+static gboolean update_mounts          (gpointer user_data);
+static void    prepare_mounts_treeview (GtkBuilder *builder);
+static gboolean update_usb_events      (gpointer user_data);
+static void    prepare_usb_events_treeview(GtkBuilder *builder);
 static gboolean update_processes       (gpointer user_data);
 static void    prepare_processes_treeview(GtkBuilder *builder);
 static void    on_threshold_changed    (GtkSpinButton *spin, gpointer user_data);
@@ -93,14 +93,14 @@ static gboolean update_ports(gpointer user_data)
     return G_SOURCE_CONTINUE;
 }
 
-/* --------------- preparar Puertos --------------------------- */
+/* ---------------- preparar Puertos --------------------------- */
 static void prepare_ports_treeview(GtkBuilder *builder)
 {
     GtkTreeView  *tv    = GTK_TREE_VIEW(
         gtk_builder_get_object(builder, "tree_ports"));
     GtkListStore *store = gtk_list_store_new(
         N_PORT_COLS,
-        G_TYPE_INT,    G_TYPE_STRING,
+        G_TYPE_INT, G_TYPE_STRING,
         G_TYPE_STRING, G_TYPE_STRING,
         G_TYPE_STRING
     );
@@ -118,8 +118,8 @@ static void prepare_ports_treeview(GtkBuilder *builder)
     g_timeout_add_seconds(5, update_ports, store);
 }
 
-/* ------------ update_devices: refresca “Mounts” --------- */
-static gboolean update_devices(gpointer user_data)
+/* ---------------- update_mounts: refresca Monturas USB ------------ */
+static gboolean update_mounts(gpointer user_data)
 {
     GtkListStore *store = GTK_LIST_STORE(user_data);
     gtk_list_store_clear(store);
@@ -130,35 +130,36 @@ static gboolean update_devices(gpointer user_data)
         GtkTreeIter iter;
         gtk_list_store_append(store, &iter);
         gtk_list_store_set(store, &iter,
-            COL_DEVICE_PATH, mounts[i],
+            COL_MOUNT_PATH, mounts[i],
             -1);
         free(mounts[i]);
     }
     return G_SOURCE_CONTINUE;
 }
 
-/* ------------ preparar Dispositivos (Mounts) ---------------- */
-static void prepare_devices_treeview(GtkBuilder *builder)
+/* ------------- preparar Mounts TreeView ------------------------- */
+static void prepare_mounts_treeview(GtkBuilder *builder)
 {
     GtkTreeView  *tv    = GTK_TREE_VIEW(
-        gtk_builder_get_object(builder, "tree_devices"));
+        gtk_builder_get_object(builder, "tree_mounts"));
     GtkListStore *store = gtk_list_store_new(
-        N_DEV_COLS,
+        N_MOUNT_COLS,
         G_TYPE_STRING
     );
     GtkCellRenderer *rnd = gtk_cell_renderer_text_new();
     gtk_tree_view_insert_column_with_attributes(
-        tv, -1, "Monturas USB", rnd, "text", COL_DEVICE_PATH, NULL);
+        tv, -1, "Monturas USB", rnd, "text", COL_MOUNT_PATH, NULL);
     gtk_tree_view_set_model(tv, GTK_TREE_MODEL(store));
-    update_devices(store);
-    g_timeout_add_seconds(1, update_devices, store);
+    update_mounts(store);
+    /* refresca cada segundo */
+    g_timeout_add_seconds(1, update_mounts, store);
 }
 
-/* ------------ update_device_events: refresca “Eventos USB” ----- */
-static gboolean update_device_events(gpointer user_data)
+/* ---------------- update_usb_events: refresca Eventos USB --------- */
+static gboolean update_usb_events(gpointer user_data)
 {
-    GtkTreeView  *tv    = GTK_TREE_VIEW(user_data);
-    GtkListStore *store = GTK_LIST_STORE(gtk_tree_view_get_model(tv));
+    GtkListStore *store =
+      GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(user_data)));
 
     while (g_async_queue_length(event_queue) > 0) {
         char *msg = g_async_queue_try_pop(event_queue);
@@ -167,31 +168,31 @@ static gboolean update_device_events(gpointer user_data)
         GtkTreeIter it;
         gtk_list_store_append(store, &it);
         gtk_list_store_set(store, &it,
-            COL_EVENT_MSG, msg,
+            COL_USB_EVENT_MSG, msg,
             -1);
         g_free(msg);
     }
     return G_SOURCE_CONTINUE;
 }
 
-/* ------------ preparar Eventos USB --------------------------- */
-static void prepare_events_treeview(GtkBuilder *builder)
+/* ------------- preparar USB Events TreeView --------------------- */
+static void prepare_usb_events_treeview(GtkBuilder *builder)
 {
     GtkTreeView  *tv    = GTK_TREE_VIEW(
-        gtk_builder_get_object(builder, "tree_events"));
+        gtk_builder_get_object(builder, "tree_usb_events"));
     GtkListStore *store = gtk_list_store_new(
-        N_EVENT_COLS,
+        N_USB_EVENT_COLS,
         G_TYPE_STRING
     );
     GtkCellRenderer *rnd = gtk_cell_renderer_text_new();
     gtk_tree_view_insert_column_with_attributes(
-        tv, -1, "Eventos USB", rnd, "text", COL_EVENT_MSG, NULL);
+        tv, -1, "Eventos USB", rnd, "text", COL_USB_EVENT_MSG, NULL);
     gtk_tree_view_set_model(tv, GTK_TREE_MODEL(store));
-    /* Poll cada segundo */
-    g_timeout_add_seconds(1, update_device_events, tv);
+    /* poll cada segundo */
+    g_timeout_add_seconds(1, update_usb_events, tv);
 }
 
-/* ------------ update_processes: refresca “Procesos” --------- */
+/* ---------------- update_processes: refresca “Procesos” --------- */
 static gboolean update_processes(gpointer user_data)
 {
     GtkListStore *store = GTK_LIST_STORE(user_data);
@@ -202,8 +203,10 @@ static gboolean update_processes(gpointer user_data)
         ProcInfo *p = g_ptr_array_index(arr, i);
         GtkTreeIter it;
         gtk_list_store_append(store, &it);
+
         gdouble mem_mb = p->mem_rss / 1048576.0;
         const char *alert = p->suspicious ? "⚠️" : "";
+
         gtk_list_store_set(store, &it,
             COL_PID,        p->pid,
             COL_PNAME,      p->name,
@@ -216,14 +219,14 @@ static gboolean update_processes(gpointer user_data)
     return G_SOURCE_CONTINUE;
 }
 
-/* ------------ preparar Procesos --------------------------- */
+/* ------------- preparar Procesos TreeView ----------------------- */
 static void prepare_processes_treeview(GtkBuilder *builder)
 {
     GtkTreeView  *tv    = GTK_TREE_VIEW(
         gtk_builder_get_object(builder, "tree_processes"));
     GtkListStore *store = gtk_list_store_new(
         N_PROC_COLS,
-        G_TYPE_INT,    G_TYPE_STRING,
+        G_TYPE_INT, G_TYPE_STRING,
         G_TYPE_DOUBLE, G_TYPE_DOUBLE,
         G_TYPE_STRING
     );
@@ -232,7 +235,7 @@ static void prepare_processes_treeview(GtkBuilder *builder)
     };
     for (int i = 0; i < N_PROC_COLS; ++i) {
         GtkCellRenderer *rnd = gtk_cell_renderer_text_new();
-        if (i == COL_PID || i == COL_CPU || i == COL_MEM)
+        if (i==COL_PID||i==COL_CPU||i==COL_MEM)
             g_object_set(rnd, "xalign", 1.0, NULL);
         gtk_tree_view_insert_column_with_attributes(
             tv, -1, titles[i], rnd, "text", i, NULL);
@@ -242,7 +245,7 @@ static void prepare_processes_treeview(GtkBuilder *builder)
     g_timeout_add_seconds(1, update_processes, store);
 }
 
-/* ------------ Callback umbrales CPU/Mem -------------------- */
+/* ---------------- umbrales CPU/Mem ----------------------------- */
 static void on_threshold_changed(GtkSpinButton *spin, gpointer user_data)
 {
     ThresholdWidgets *th = user_data;
@@ -252,7 +255,7 @@ static void on_threshold_changed(GtkSpinButton *spin, gpointer user_data)
     );
 }
 
-/* ---------------------- on_activate ------------------------ */
+/* ---------------------- on_activate ---------------------------- */
 static void on_activate(GtkApplication *app, gpointer data)
 {
     /* 0) Crear cola de eventos */
@@ -265,8 +268,7 @@ static void on_activate(GtkApplication *app, gpointer data)
     GtkCssProvider *prov = gtk_css_provider_new();
     gtk_css_provider_load_from_path(prov, "ui/matrix.css");
     gtk_style_context_add_provider_for_display(
-        gdk_display_get_default(),
-        GTK_STYLE_PROVIDER(prov),
+        gdk_display_get_default(), GTK_STYLE_PROVIDER(prov),
         GTK_STYLE_PROVIDER_PRIORITY_APPLICATION
     );
     g_object_unref(prov);
@@ -292,8 +294,8 @@ static void on_activate(GtkApplication *app, gpointer data)
                      G_CALLBACK(on_threshold_changed), th);
 
     /* 5) Montar pestañas */
-    prepare_devices_treeview(builder);
-    prepare_events_treeview(builder);
+    prepare_mounts_treeview(builder);
+    prepare_usb_events_treeview(builder);
     prepare_ports_treeview(builder);
     prepare_processes_treeview(builder);
 
@@ -302,15 +304,15 @@ static void on_activate(GtkApplication *app, gpointer data)
     g_object_unref(builder);
 }
 
-/* ------------------------ main ----------------------------- */
+/* ------------------------ main ------------------------------ */
 int main(int argc, char *argv[])
 {
     GtkApplication *app =
-        gtk_application_new("org.matcom.guard", G_APPLICATION_DEFAULT_FLAGS);
+      gtk_application_new("org.matcom.guard", G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(on_activate), NULL);
     int status = g_application_run(G_APPLICATION(app), argc, argv);
 
-    /* Al cerrar: parar backend, limpiar y liberar cola */
+    /* Al cerrar: parar backend y cleanup */
     scann_stop();
     monitor_cleanup();
     g_async_queue_unref(event_queue);
