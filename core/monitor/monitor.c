@@ -39,8 +39,8 @@ static const char *whitelist[] = {
     "nano",
     "vim",
     "emacs",
-    "compiler",       // tu ejemplo
-    NULL              // ¡Importante! Para terminar el array
+    "compiler",       
+    NULL              
 };
 
 static gboolean is_whitelisted(const char *proc_name) {

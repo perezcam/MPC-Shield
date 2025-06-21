@@ -69,9 +69,6 @@ void *monitor_thread(void *arg) {
                         ev.file.path[PATH_MAX-1] = '\0';
                     }
 
-                    //printf("DELETE: %lld", md->mask&FAN_DELETE);
-                    //printf("PATH: %s\n", fullpath);
-
                     /* Auto-mark new directories */
                     if (md->mask & (FAN_CREATE | FAN_MOVED_TO)) {
                         struct stat st;
@@ -104,14 +101,6 @@ void *monitor_thread(void *arg) {
                     close(md->fd);
                     push_event(ev);
                 }
-
-                // /* Debug logging */
-                // fprintf(stderr, "[DEBUG] fd=%d mask=0x%llx path=%s\n",
-                //         md->fd,
-                //         (unsigned long long)md->mask,
-                //         ev.file.path);
-                // fflush(stderr);
-
                 ptr += md->event_len;
             }
         }

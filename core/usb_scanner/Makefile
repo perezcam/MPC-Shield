@@ -10,14 +10,14 @@ SRCS := \
 	worker.c  \
 	event_queue.c \
 	legitimacy.c \
-	scanner_test.c\
+	scann.c\
 	path_stat_table.c\
 	monitor_utils.c
 
 # Objetos derivados de las fuentes
 OBJS := $(SRCS:.c=.o)
 
-TARGET := scanner_test
+TARGET := scann
 
 .PHONY: all clean
 

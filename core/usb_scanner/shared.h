@@ -11,6 +11,7 @@
 #include <openssl/sha.h>
 #include <sys/stat.h>
 #include <linux/limits.h>
+#include <glib.h>
 
 #define CMDLINE_MAX 4096
 #define QUEUE_SIZE   1024
@@ -20,8 +21,7 @@
 #endif
 
 #define MAX_USBS      64
-
-#define MAX_ENTRIES 128
+#define MAX_ENTRIES   128
 
 typedef struct {
     pid_t  pid;
@@ -33,68 +33,89 @@ typedef struct {
 } ProcessInfo;
 
 typedef struct {
-    char   path[PATH_MAX];
-    unsigned char sha256[SHA256_DIGEST_LENGTH];
-    mode_t mode;
-    struct timespec mtime;
+    char             path[PATH_MAX];
+    unsigned char    sha256[SHA256_DIGEST_LENGTH];
+    mode_t           mode;
+    struct timespec  mtime;
 } FileInfo;
 
 typedef struct {
-    uint64_t   mask;
+    uint64_t    mask;
     ProcessInfo proc;
     FileInfo    file;
 } EventInfo;
 
 typedef struct {
-    char        path[PATH_MAX];  // absolute path
-    struct stat st;              // stat snapshot
-    int         in_use;          // 0 = free; 1 = used
+    char        path[PATH_MAX];
+    struct stat st;
+    int         in_use;
 } pst_entry_t;
 
 typedef struct {
     pst_entry_t entries[MAX_ENTRIES];
-    int count;  // how many in use
+    int         count;
 } path_stat_table_t;
 
-
-/* Variables globales (definidas en shared.c) */
-extern int g_fan_content_fd;
-extern int g_fan_notify_fd;
-
-/* Global path-stat table and its mutex */
+/* ---------------------------------------------------------------- */
+/*   Variables globales DEFINIDAS en main.c (solo aquí)            */
+/* ---------------------------------------------------------------- */
+extern int               g_fan_content_fd;
+extern int               g_fan_notify_fd;
+extern pthread_mutex_t   path_table_mutex;
 extern path_stat_table_t path_table;
-extern pthread_mutex_t path_table_mutex;
+extern GAsyncQueue      *event_queue;
 
+/* ---------------------------------------------------------------- */
+/*   Funciones para arrancar/parar el backend (scann.c)            */
+/* ---------------------------------------------------------------- */
+void scann_start(void);
+void scann_stop(void);
 
-/* Cola de eventos */
-extern void push_event(EventInfo ev);
-extern void pop_event(EventInfo *ev);
+/* ---------------------------------------------------------------- */
+/*   Cola de eventos (event_queue)                                 */
+/* ---------------------------------------------------------------- */
+void push_event(EventInfo ev);
+void pop_event(EventInfo *ev);
 
-/* Entrypoints de hilos */
-extern void *monitor_thread(void *arg);
-extern void *scanner_thread(void *arg);
-extern void *worker_thread(void *arg);
+/* ---------------------------------------------------------------- */
+/*   Entrypoints de los hilos                                      */
+/* ---------------------------------------------------------------- */
+void *monitor_thread(void *arg);
+void *scanner_thread(void *arg);
+void *worker_thread(void *arg);
 
-/* scanner.c */
-extern void  mark_path(const char *path);
-extern int get_current_mounts(char *mounts[], int max);
-int find_mount_by_fsid(__kernel_fsid_t event_fsid, char *out);
+/* ---------------------------------------------------------------- */
+/*   Funciones del scanner (scanner.c)                             */
+/* ---------------------------------------------------------------- */
+void  mark_path(const char *path);
+int   get_current_mounts(char *mounts[], int max);
+int   find_mount_by_fsid(__kernel_fsid_t event_fsid, char *out);
 
-/* report.c  */
+/* ---------------------------------------------------------------- */
+/*   Funciones de reporte (report.c)                               */
+/* ---------------------------------------------------------------- */
 int   get_path_from_fd(int fd, char *buf, size_t bufsiz);
-extern void  report_current_mounts(void);
-extern void  report_file_modification(const char *filepath, uint64_t mask, pid_t pid);
-extern void  report_suspicious(pid_t pid, const char *exe_path);
-extern void report_metadata_change(const char *filepath, const struct stat *old_s, const struct stat *new_s, pid_t pid);
-void report_file_deletion(const char *filepath, pid_t pid);
+void  report_current_mounts(void);
+void  report_file_modification(const char *filepath, uint64_t mask, pid_t pid);
+void  report_suspicious(pid_t pid, const char *exe_path);
+void  report_metadata_change(const char *filepath,
+                             const struct stat *old_s,
+                             const struct stat *new_s,
+                             pid_t pid);
+void  report_file_deletion(const char *filepath, pid_t pid);
 
-/*path_stat_table.c*/
-extern void pst_init(path_stat_table_t *tbl);
-extern int pst_find_index(path_stat_table_t *tbl, const char *path);
-extern int pst_update(path_stat_table_t *tbl, const char *path, const struct stat *st);
-extern int pst_remove(path_stat_table_t *tbl, const char *path);
-extern int pst_lookup(path_stat_table_t *tbl, const char *path, struct stat *out);
+/* ---------------------------------------------------------------- */
+/*   Tabla de estados de paths (path_stat_table.c)                 */
+/* ---------------------------------------------------------------- */
+void pst_init(path_stat_table_t *tbl);
+int  pst_find_index(path_stat_table_t *tbl, const char *path);
+int  pst_update(path_stat_table_t *tbl, const char *path, const struct stat *st);
+int  pst_remove(path_stat_table_t *tbl, const char *path);
+int  pst_lookup(path_stat_table_t *tbl, const char *path, struct stat *out);
 
-/*monitor_utils.c*/
-extern int get_event_fullpath(struct fanotify_event_metadata *md, char *out, size_t outlen);
+/* ---------------------------------------------------------------- */
+/*   Utilidades de monitor (monitor_utils.c)                       */
+/* ---------------------------------------------------------------- */
+int get_event_fullpath(struct fanotify_event_metadata *md, char *out, size_t outlen);
+
 #endif // SHARED_H
