@@ -56,9 +56,10 @@ typedef struct {
     int         count;
 } path_stat_table_t;
 typedef struct {
-    char *time;   // p. ej. "2025-06-21 12:00:00"
-    char *path;   // la ruta del fichero o del ejecutable
-    char *cause;  // el motivo (create, delete, suspicious, etc)
+    char *time;
+    char *path;
+    char *cause;
+    char *pid;      
 } GuiEvent;
 
 /* ---------------------------------------------------------------- */

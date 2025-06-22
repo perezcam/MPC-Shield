@@ -7,7 +7,7 @@
 #include <linux/limits.h>    // For PATH_MAX
 #include <sys/fanotify.h>
 #include <fcntl.h>
-#include "shared.h"          // declara g_fan_content_fd, g_fan_notify_fd, path_table_mutex, path_table, scann_start/stop
+#include "shared.h"         
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096

@@ -29,9 +29,9 @@ static void print_file_stat(const char *path)
     struct stat st;
     if (stat(path, &st) == 0) {
         char mtime[32];
-        struct tm tm;
-        localtime_r(&st.st_mtime, &tm);
-        strftime(mtime, sizeof(mtime), "%Y-%m-%d %H:%M:%S", &tm);
+        struct tm tm2;
+        localtime_r(&st.st_mtime, &tm2);
+        strftime(mtime, sizeof(mtime), "%Y-%m-%d %H:%M:%S", &tm2);
         printf("    inode=%llu size=%lld bytes uid=%u gid=%u perms=%04o mtime=%s\n",
                (unsigned long long)st.st_ino,
                (long long)st.st_size,
@@ -79,6 +79,7 @@ void report_file_modification(const char *filepath,
     gev->time  = g_strdup(ts);
     gev->path  = g_strdup(filepath);
     gev->cause = g_strdup(cause_buf);
+    gev->pid   = g_strdup_printf("%d", pid);
     g_async_queue_push(event_queue, gev);
 
     /* (Opcional) continúa imprimiendo en stdout */
@@ -96,11 +97,11 @@ void report_suspicious(pid_t pid, const char *exe_path)
     char ts[64];
     timestamp(ts, sizeof(ts));
 
-    /* Encolar evento */
     GuiEvent *gev = g_new0(GuiEvent, 1);
     gev->time  = g_strdup(ts);
     gev->path  = g_strdup(exe_path);
     gev->cause = g_strdup("suspicious");
+    gev->pid   = g_strdup_printf("%d", pid);
     g_async_queue_push(event_queue, gev);
 
     printf("[%s] Suspicious process: pid=%d exe=%s\n",
@@ -109,17 +110,65 @@ void report_suspicious(pid_t pid, const char *exe_path)
 }
 
 /* ------------------------------------------------------------------ */
-/*          Live-view de dispositivos USB montados (opcional)        */
+/*          Live-view de dispositivos USB montados (opcional)         */
 /* ------------------------------------------------------------------ */
 static char **prev_mounts = NULL;
 static int    prev_count  = 0;
-static void free_prev_mounts(void) { /* ... igual que antes ... */ }
+static void free_prev_mounts(void)
+{
+    for (int i = 0; i < prev_count; ++i)
+        free(prev_mounts[i]);
+    free(prev_mounts);
+    prev_mounts = NULL;
+    prev_count  = 0;
+}
 
 void report_current_mounts(void)
 {
-    /* Opcional: si quieres también encolar como GuiEvent puedes adaptarlo aquí,
-       o simplemente dejar el printf para debugging. */
-    /* ... código existente ... */
+    char *mounts[MAX_USBS];
+    int   n = get_current_mounts(mounts, MAX_USBS);
+
+    int changed = (n != prev_count);
+    if (!changed) {
+        for (int i = 0; i < n; ++i) {
+            if (strcmp(mounts[i], prev_mounts[i]) != 0) {
+                changed = 1;
+                break;
+            }
+        }
+    }
+
+    if (changed) {
+        char ts[64];
+        timestamp(ts, sizeof(ts));
+
+        /* Empuja un evento resumen de monturas */
+        GuiEvent *gev = g_new0(GuiEvent, 1);
+        gev->time  = g_strdup(ts);
+        gev->path  = g_strdup_printf("USB mounts: %d", n);
+        gev->cause = g_strdup("mount-change");
+        gev->pid   = g_strdup("");  // sin PID aquí
+        g_async_queue_push(event_queue, gev);
+
+        /* (Opcional) imprimir en stdout */
+        printf("=== USB mounts (live) ===\n[%s] %d mount%s\n",
+               ts, n, n == 1 ? "" : "s");
+        for (int i = 0; i < n; ++i) {
+            printf("  • %s\n", mounts[i]);
+        }
+        fflush(stdout);
+
+        free_prev_mounts();
+        if (n > 0) {
+            prev_mounts = malloc(sizeof(char*) * n);
+            for (int i = 0; i < n; ++i)
+                prev_mounts[i] = strdup(mounts[i]);
+            prev_count = n;
+        }
+    }
+
+    for (int i = 0; i < n; ++i)
+        free(mounts[i]);
 }
 
 __attribute__((destructor))
@@ -147,7 +196,9 @@ void report_metadata_change(const char *filepath,
         gev->time  = g_strdup(ts);
         gev->path  = g_strdup(filepath);
         gev->cause = g_strdup(buf);
+        gev->pid   = g_strdup_printf("%d", pid);
         g_async_queue_push(event_queue, gev);
+
         printf("[%s] [METADATA] %s %s pid=%d\n",
                ts, filepath, buf, pid);
     }
@@ -159,7 +210,9 @@ void report_metadata_change(const char *filepath,
         gev->time  = g_strdup(ts);
         gev->path  = g_strdup(filepath);
         gev->cause = g_strdup(buf);
+        gev->pid   = g_strdup_printf("%d", pid);
         g_async_queue_push(event_queue, gev);
+
         printf("[%s] [METADATA] %s %s pid=%d\n",
                ts, filepath, buf, pid);
     }
@@ -175,9 +228,9 @@ void report_file_deletion(const char *filepath, pid_t pid)
     gev->time  = g_strdup(ts);
     gev->path  = g_strdup(filepath);
     gev->cause = g_strdup("delete");
+    gev->pid   = g_strdup_printf("%d", pid);
     g_async_queue_push(event_queue, gev);
 
-    printf("[%s] File deleted: %s (pid=%d)\n",
-           ts, filepath, pid);
+    printf("[%s] File deleted: %s (pid=%d)\n", ts, filepath, pid);
     fflush(stdout);
 }

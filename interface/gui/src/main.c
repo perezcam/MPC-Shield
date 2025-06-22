@@ -16,7 +16,7 @@ pthread_mutex_t   path_table_mutex = PTHREAD_MUTEX_INITIALIZER;
 path_stat_table_t path_table;
 
 /* ---------------------------------------------------------------- */
-/* Cola de eventos (definida aquí para que linkee correctamente)    */
+/* Cola de eventos (para la GUI)                                   */
 /* ---------------------------------------------------------------- */
 GAsyncQueue *event_queue = NULL;
 
@@ -36,11 +36,12 @@ enum {
     N_MOUNT_COLS
 };
 
-/* -------- Índices de columnas Eventos USB (hora, ruta, causa) ---- */
+/* ---- Índices de columnas Eventos USB (Hora, Ruta, Causa, PID) --- */
 enum {
     COL_EVENT_TIME,
     COL_EVENT_PATH,
     COL_EVENT_CAUSE,
+    COL_EVENT_PID,     /* ← nueva columna */
     N_EVENT_COLS
 };
 
@@ -60,7 +61,9 @@ typedef struct {
     GtkSpinButton *mem_spin;
 } ThresholdWidgets;
 
-/* Prototipos GTK */
+/* ---------------------------------------------------------------- */
+/* Prototipos GTK                                                  */
+/* ---------------------------------------------------------------- */
 static gboolean update_ports           (gpointer user_data);
 static void    prepare_ports_treeview  (GtkBuilder *builder);
 static gboolean update_mounts          (gpointer user_data);
@@ -72,7 +75,9 @@ static void    prepare_processes_treeview(GtkBuilder *builder);
 static void    on_threshold_changed    (GtkSpinButton *spin, gpointer user_data);
 static void    on_activate             (GtkApplication *app, gpointer user_data);
 
-/* ---------------- update_ports: refresca “Puertos” ------------- */
+/* ---------------------------------------------------------------- */
+/* update_ports: refresca “Puertos”                                */
+/* ---------------------------------------------------------------- */
 static gboolean update_ports(gpointer user_data)
 {
     GtkListStore *store = GTK_LIST_STORE(user_data);
@@ -95,7 +100,6 @@ static gboolean update_ports(gpointer user_data)
     return G_SOURCE_CONTINUE;
 }
 
-/* ---------------- preparar Puertos --------------------------- */
 static void prepare_ports_treeview(GtkBuilder *builder)
 {
     GtkTreeView  *tv    = GTK_TREE_VIEW(
@@ -122,7 +126,9 @@ static void prepare_ports_treeview(GtkBuilder *builder)
     g_timeout_add_seconds(5, update_ports, store);
 }
 
-/* ---------------- update_mounts: refresca Monturas USB ------------ */
+/* ---------------------------------------------------------------- */
+/* update_mounts: refresca Monturas USB                            */
+/* ---------------------------------------------------------------- */
 static gboolean update_mounts(gpointer user_data)
 {
     GtkListStore *store = GTK_LIST_STORE(user_data);
@@ -141,7 +147,6 @@ static gboolean update_mounts(gpointer user_data)
     return G_SOURCE_CONTINUE;
 }
 
-/* ------------- preparar Monturas USB TreeView ------------------ */
 static void prepare_mounts_treeview(GtkBuilder *builder)
 {
     GtkTreeView  *tv    = GTK_TREE_VIEW(
@@ -158,7 +163,9 @@ static void prepare_mounts_treeview(GtkBuilder *builder)
     g_timeout_add_seconds(1, update_mounts, store);
 }
 
-/* ---------------- update_usb_events: refresca Eventos USB --------- */
+/* ---------------------------------------------------------------- */
+/* update_usb_events: refresca Eventos USB con Hora, Ruta, Causa, PID */
+/* ---------------------------------------------------------------- */
 static gboolean update_usb_events(gpointer user_data)
 {
     GtkTreeView  *tv    = GTK_TREE_VIEW(user_data);
@@ -166,7 +173,6 @@ static gboolean update_usb_events(gpointer user_data)
         gtk_tree_view_get_model(tv)
     );
 
-    /* Sacamos todos los GuiEvent de la cola */
     while (g_async_queue_length(event_queue) > 0) {
         GuiEvent *ev = g_async_queue_try_pop(event_queue);
         if (!ev) break;
@@ -177,29 +183,30 @@ static gboolean update_usb_events(gpointer user_data)
             COL_EVENT_TIME,  ev->time,
             COL_EVENT_PATH,  ev->path,
             COL_EVENT_CAUSE, ev->cause,
+            COL_EVENT_PID,   ev->pid,
             -1);
 
-        /* liberamos */
         g_free(ev->time);
         g_free(ev->path);
         g_free(ev->cause);
+        g_free(ev->pid);
         g_free(ev);
     }
     return G_SOURCE_CONTINUE;
 }
 
-/* -------- preparar USB Events TreeView ------------------------ */
 static void prepare_usb_events_treeview(GtkBuilder *builder)
 {
     GtkTreeView  *tv    = GTK_TREE_VIEW(
         gtk_builder_get_object(builder, "tree_usb_events"));
     GtkListStore *store = gtk_list_store_new(
         N_EVENT_COLS,
-        G_TYPE_STRING,  /* tiempo */
-        G_TYPE_STRING,  /* ruta */
-        G_TYPE_STRING   /* causa */
+        G_TYPE_STRING,  /* Hora */
+        G_TYPE_STRING,  /* Ruta */
+        G_TYPE_STRING,  /* Causa */
+        G_TYPE_STRING   /* PID */
     );
-    const char *titles[N_EVENT_COLS] = { "Hora", "Ruta", "Causa" };
+    const char *titles[N_EVENT_COLS] = { "Hora", "Ruta", "Causa", "PID" };
     for (int i = 0; i < N_EVENT_COLS; i++) {
         GtkCellRenderer *rnd = gtk_cell_renderer_text_new();
         gtk_tree_view_insert_column_with_attributes(
@@ -209,7 +216,9 @@ static void prepare_usb_events_treeview(GtkBuilder *builder)
     g_timeout_add_seconds(1, update_usb_events, tv);
 }
 
-/* ---------------- update_processes: refresca “Procesos” --------- */
+/* ---------------------------------------------------------------- */
+/* update_processes: refresca Procesos                             */
+/* ---------------------------------------------------------------- */
 static gboolean update_processes(gpointer user_data)
 {
     GtkListStore *store = GTK_LIST_STORE(user_data);
@@ -236,7 +245,6 @@ static gboolean update_processes(gpointer user_data)
     return G_SOURCE_CONTINUE;
 }
 
-/* ------------- preparar Procesos TreeView ---------------------- */
 static void prepare_processes_treeview(GtkBuilder *builder)
 {
     GtkTreeView  *tv    = GTK_TREE_VIEW(
@@ -263,7 +271,9 @@ static void prepare_processes_treeview(GtkBuilder *builder)
     g_timeout_add_seconds(1, update_processes, store);
 }
 
-/* ---------------- umbrales CPU/Mem ----------------------------- */
+/* ---------------------------------------------------------------- */
+/* on_threshold_changed: ajusta umbrales en el backend              */
+/* ---------------------------------------------------------------- */
 static void on_threshold_changed(GtkSpinButton *spin, gpointer user_data)
 {
     ThresholdWidgets *th = user_data;
@@ -273,7 +283,9 @@ static void on_threshold_changed(GtkSpinButton *spin, gpointer user_data)
     );
 }
 
-/* ---------------------- on_activate ---------------------------- */
+/* ---------------------------------------------------------------- */
+/* on_activate: arranca la GUI, carga .ui y monta todas las vistas  */
+/* ---------------------------------------------------------------- */
 static void on_activate(GtkApplication *app, gpointer data)
 {
     /* 0) Crear cola de eventos */
@@ -298,7 +310,7 @@ static void on_activate(GtkApplication *app, gpointer data)
         gtk_builder_get_object(builder, "main_window"));
     gtk_window_set_application(win, app);
 
-    /* 4) Umbrales */
+    /* 4) Umbrales CPU/Mem */
     ThresholdWidgets *th = g_new0(ThresholdWidgets, 1);
     th->cpu_spin = GTK_SPIN_BUTTON(
         gtk_builder_get_object(builder, "cpu_threshold_spin"));
@@ -312,7 +324,7 @@ static void on_activate(GtkApplication *app, gpointer data)
     g_signal_connect(th->mem_spin, "value-changed",
                      G_CALLBACK(on_threshold_changed), th);
 
-    /* 5) Montar vistas */
+    /* 5) Montar todas las vistas */
     prepare_mounts_treeview(builder);
     prepare_usb_events_treeview(builder);
     prepare_ports_treeview(builder);
@@ -323,7 +335,9 @@ static void on_activate(GtkApplication *app, gpointer data)
     g_object_unref(builder);
 }
 
-/* ------------------------ main ------------------------------ */
+/* ---------------------------------------------------------------- */
+/* main: lanza el GtkApplication                                    */
+/* ---------------------------------------------------------------- */
 int main(int argc, char *argv[])
 {
     GtkApplication *app =
