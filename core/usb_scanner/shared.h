@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <linux/limits.h>
 #include <glib.h>
+#include <stdatomic.h>
 
 #define CMDLINE_MAX 4096
 #define QUEUE_SIZE   1024
@@ -70,6 +71,8 @@ extern int               g_fan_notify_fd;
 extern pthread_mutex_t   path_table_mutex;
 extern path_stat_table_t path_table;
 extern GAsyncQueue *event_queue;
+extern atomic_int g_total_events;
+extern atomic_int g_suspicious_events;
 
 
 /* ---------------------------------------------------------------- */

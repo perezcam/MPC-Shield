@@ -66,6 +66,12 @@ typedef struct {
     GtkSpinButton *mem_spin;
 } ThresholdWidgets;
 
+/* Estructura para pasar al refresco de porcentaje */
+typedef struct {
+    GtkSpinButton *sus_spin;
+    GtkEntry      *pct_entry;
+} SuspiciousData;
+
 /* ---------------------------------------------------------------- */
 /* Prototipos GTK                                                  */
 /* ---------------------------------------------------------------- */
@@ -281,7 +287,9 @@ static void prepare_processes_treeview(GtkBuilder *builder)
 /* ---------------------------------------------------------------- */
 /* on_threshold_changed: ajusta umbrales CPU/Mem en el backend       */
 /* ---------------------------------------------------------------- */
-static void on_threshold_changed(GtkSpinButton *spin, gpointer user_data)
+static void
+on_threshold_changed(GtkSpinButton *spin,
+                     gpointer       user_data)
 {
     ThresholdWidgets *th = user_data;
     monitor_init(
@@ -291,33 +299,49 @@ static void on_threshold_changed(GtkSpinButton *spin, gpointer user_data)
 }
 
 /* ---------------------------------------------------------------- */
-/* on_suspicious_threshold_changed: reset contadores al cambiar umbral */ 
+/* on_suspicious_threshold_changed:
+/*    solo refresca la vista, no toca contadores                   */
 /* ---------------------------------------------------------------- */
-static void on_suspicious_threshold_changed(GtkSpinButton *spin, gpointer user_data)
+static void
+on_suspicious_threshold_changed(GtkSpinButton *spin,
+                                gpointer       user_data)
 {
-    atomic_store(&g_total_events, 0);
-    atomic_store(&g_suspicious_events, 0);
+    SuspiciousData *d = user_data;
+    // Forzamos un refresco inmediato
+    refresh_suspicious_pct(d);
 }
 
 /* ---------------------------------------------------------------- */
-/* refresh_suspicious_pct: recalcula y muestra el % sospechoso      */
+/* refresh_suspicious_pct: recalcula y muestra el % sospechoso
+ *    y añade “⚠️” si supera el umbral actual                       */
 /* ---------------------------------------------------------------- */
-static gboolean refresh_suspicious_pct(gpointer user_data)
+static gboolean
+refresh_suspicious_pct(gpointer user_data)
 {
-    GtkEntry *entry = GTK_ENTRY(user_data);
-    int tot = atomic_load(&g_total_events);
-    int sus = atomic_load(&g_suspicious_events);
-    double pct = tot ? (100.0 * sus / tot) : 0.0;
-    gchar *texto = g_strdup_printf("%.2f %%", pct);
-    gtk_editable_set_text(GTK_EDITABLE(entry), texto);
+    SuspiciousData *d = user_data;
+
+    int   tot    = atomic_load(&g_total_events);
+    int   sus    = atomic_load(&g_suspicious_events);
+    double pct   = tot ? (100.0 * sus / tot) : 0.0;
+    double umbral = gtk_spin_button_get_value(d->sus_spin);
+
+    gchar *texto = g_strdup_printf(
+        "%.2f %% %s",
+        pct,
+        (pct > umbral ? "⚠️" : "")
+    );
+    gtk_editable_set_text(GTK_EDITABLE(d->pct_entry), texto);
     g_free(texto);
+
     return G_SOURCE_CONTINUE;
 }
 
 /* ---------------------------------------------------------------- */
 /* on_activate: arranca la GUI, carga .ui y monta todas las vistas  */
 /* ---------------------------------------------------------------- */
-static void on_activate(GtkApplication *app, gpointer data)
+static void
+on_activate(GtkApplication *app,
+            gpointer        data)
 {
     /* 0) Crear cola de eventos */
     event_queue = g_async_queue_new();
@@ -356,18 +380,22 @@ static void on_activate(GtkApplication *app, gpointer data)
         gtk_spin_button_get_value(th->mem_spin)
     );
     g_signal_connect(th->cpu_spin, "value-changed",
-                     G_CALLBACK(on_threshold_changed), th);
+                     G_CALLBACK(on_threshold_changed),
+                     th);
     g_signal_connect(th->mem_spin, "value-changed",
-                     G_CALLBACK(on_threshold_changed), th);
+                     G_CALLBACK(on_threshold_changed),
+                     th);
 
     /* 6) Umbral y porcentaje sospechosos */
-    GtkSpinButton *sus_spin = GTK_SPIN_BUTTON(
+    SuspiciousData *sd = g_new0(SuspiciousData, 1);
+    sd->sus_spin  = GTK_SPIN_BUTTON(
         gtk_builder_get_object(builder, "suspicious_threshold_spin"));
-    GtkEntry     *pct_entry = GTK_ENTRY(
+    sd->pct_entry = GTK_ENTRY(
         gtk_builder_get_object(builder, "detected_percentage_entry"));
-    g_signal_connect(sus_spin, "value-changed",
-                     G_CALLBACK(on_suspicious_threshold_changed), NULL);
-    g_timeout_add_seconds(1, refresh_suspicious_pct, pct_entry);
+    g_signal_connect(sd->sus_spin, "value-changed",
+                     G_CALLBACK(on_suspicious_threshold_changed),
+                     sd);
+    g_timeout_add_seconds(1, refresh_suspicious_pct, sd);
 
     /* 7) Montar todas las vistas */
     prepare_mounts_treeview(builder);
@@ -383,7 +411,9 @@ static void on_activate(GtkApplication *app, gpointer data)
 /* ---------------------------------------------------------------- */
 /* main: lanza el GtkApplication                                    */
 /* ---------------------------------------------------------------- */
-int main(int argc, char *argv[])
+int
+main(int    argc,
+     char **argv)
 {
     GtkApplication *app =
         gtk_application_new("org.matcom.guard", G_APPLICATION_DEFAULT_FLAGS);

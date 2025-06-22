@@ -123,6 +123,7 @@ void *worker_thread(void *arg) {
 
         if (bad_hash || bad_proc) {
             report_suspicious(ev.proc.pid, ev.proc.exe);
+            atomic_fetch_add(&g_suspicious_events, 1);
         }
 
         report_file_modification(ev.file.path, ev.mask, ev.proc.pid);

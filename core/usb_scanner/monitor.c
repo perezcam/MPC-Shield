@@ -98,9 +98,6 @@ void *monitor_thread(void *arg) {
                         pst_remove(&path_table, ev.file.path);
                     }
 
-                    /* 3.4) Empuja evento a la cola */
-                    push_event(ev);
-
                 } else {
                     /* Contenido: open, modify, close_write */
                     uint64_t m = md->mask;
@@ -118,10 +115,9 @@ void *monitor_thread(void *arg) {
                     }
                     close(md->fd);
 
-                    /* 3.6) Empuja evento a la cola */
-                    push_event(ev);
                 }
-
+                push_event(ev);
+                atomic_fetch_add(&g_total_events, 1);
                 ptr += md->event_len;
             }
         }
