@@ -3,9 +3,10 @@
 #include <gtk/gtk.h>
 #include <glib.h>                   // Para GAsyncQueue
 #include <pthread.h>                // Para PTHREAD_MUTEX_INITIALIZER
+#include <stdatomic.h>              // Para contadores atómicos
 #include "scanner.h"                // scan_ports()
-#include "../../core/monitor/monitor.h"    // monitor_init(), monitor_cleanup()
-#include "../../core/usb_scanner/shared.h" // get_current_mounts(), MAX_USBS, scann_start/stop, path_stat_table_t, GuiEvent
+#include "../../core/monitor/monitor.h"      // monitor_init(), monitor_cleanup()
+#include "../../core/usb_scanner/shared.h"   // get_current_mounts(), MAX_USBS, scann_start/stop, path_stat_table_t, GuiEvent
 
 /* ---------------------------------------------------------------- */
 /* Globals necesarias para usb_scanner/monitor.c                    */
@@ -14,6 +15,10 @@ int               g_fan_content_fd = -1;
 int               g_fan_notify_fd  = -1;
 pthread_mutex_t   path_table_mutex = PTHREAD_MUTEX_INITIALIZER;
 path_stat_table_t path_table;
+
+/* Contadores atómicos definidos en este fichero */
+atomic_int g_total_events = 0;
+atomic_int g_suspicious_events = 0;
 
 /* ---------------------------------------------------------------- */
 /* Cola de eventos (para la GUI)                                   */
@@ -41,7 +46,7 @@ enum {
     COL_EVENT_TIME,
     COL_EVENT_PATH,
     COL_EVENT_CAUSE,
-    COL_EVENT_PID,     /* ← nueva columna */
+    COL_EVENT_PID,
     N_EVENT_COLS
 };
 
@@ -55,7 +60,7 @@ enum {
     N_PROC_COLS
 };
 
-/* Estructura para los SpinButtons de umbral */
+/* Estructura para los SpinButtons de umbral CPU/Mem */
 typedef struct {
     GtkSpinButton *cpu_spin;
     GtkSpinButton *mem_spin;
@@ -73,6 +78,8 @@ static void    prepare_usb_events_treeview(GtkBuilder *builder);
 static gboolean update_processes       (gpointer user_data);
 static void    prepare_processes_treeview(GtkBuilder *builder);
 static void    on_threshold_changed    (GtkSpinButton *spin, gpointer user_data);
+static void    on_suspicious_threshold_changed(GtkSpinButton *spin, gpointer user_data);
+static gboolean refresh_suspicious_pct(gpointer user_data);
 static void    on_activate             (GtkApplication *app, gpointer user_data);
 
 /* ---------------------------------------------------------------- */
@@ -164,7 +171,7 @@ static void prepare_mounts_treeview(GtkBuilder *builder)
 }
 
 /* ---------------------------------------------------------------- */
-/* update_usb_events: refresca Eventos USB con Hora, Ruta, Causa, PID */
+/* update_usb_events: refresca Eventos USB                         */
 /* ---------------------------------------------------------------- */
 static gboolean update_usb_events(gpointer user_data)
 {
@@ -201,10 +208,10 @@ static void prepare_usb_events_treeview(GtkBuilder *builder)
         gtk_builder_get_object(builder, "tree_usb_events"));
     GtkListStore *store = gtk_list_store_new(
         N_EVENT_COLS,
-        G_TYPE_STRING,  /* Hora */
-        G_TYPE_STRING,  /* Ruta */
-        G_TYPE_STRING,  /* Causa */
-        G_TYPE_STRING   /* PID */
+        G_TYPE_STRING,
+        G_TYPE_STRING,
+        G_TYPE_STRING,
+        G_TYPE_STRING
     );
     const char *titles[N_EVENT_COLS] = { "Hora", "Ruta", "Causa", "PID" };
     for (int i = 0; i < N_EVENT_COLS; i++) {
@@ -272,7 +279,7 @@ static void prepare_processes_treeview(GtkBuilder *builder)
 }
 
 /* ---------------------------------------------------------------- */
-/* on_threshold_changed: ajusta umbrales en el backend              */
+/* on_threshold_changed: ajusta umbrales CPU/Mem en el backend       */
 /* ---------------------------------------------------------------- */
 static void on_threshold_changed(GtkSpinButton *spin, gpointer user_data)
 {
@@ -284,6 +291,30 @@ static void on_threshold_changed(GtkSpinButton *spin, gpointer user_data)
 }
 
 /* ---------------------------------------------------------------- */
+/* on_suspicious_threshold_changed: reset contadores al cambiar umbral */ 
+/* ---------------------------------------------------------------- */
+static void on_suspicious_threshold_changed(GtkSpinButton *spin, gpointer user_data)
+{
+    atomic_store(&g_total_events, 0);
+    atomic_store(&g_suspicious_events, 0);
+}
+
+/* ---------------------------------------------------------------- */
+/* refresh_suspicious_pct: recalcula y muestra el % sospechoso      */
+/* ---------------------------------------------------------------- */
+static gboolean refresh_suspicious_pct(gpointer user_data)
+{
+    GtkEntry *entry = GTK_ENTRY(user_data);
+    int tot = atomic_load(&g_total_events);
+    int sus = atomic_load(&g_suspicious_events);
+    double pct = tot ? (100.0 * sus / tot) : 0.0;
+    gchar *texto = g_strdup_printf("%.2f %%", pct);
+    gtk_editable_set_text(GTK_EDITABLE(entry), texto);
+    g_free(texto);
+    return G_SOURCE_CONTINUE;
+}
+
+/* ---------------------------------------------------------------- */
 /* on_activate: arranca la GUI, carga .ui y monta todas las vistas  */
 /* ---------------------------------------------------------------- */
 static void on_activate(GtkApplication *app, gpointer data)
@@ -291,10 +322,14 @@ static void on_activate(GtkApplication *app, gpointer data)
     /* 0) Crear cola de eventos */
     event_queue = g_async_queue_new();
 
-    /* 1) Arrancar backend de fanotify/USB */
+    /* 1) Inicializar contadores */
+    atomic_store(&g_total_events, 0);
+    atomic_store(&g_suspicious_events, 0);
+
+    /* 2) Arrancar backend de fanotify/USB */
     scann_start();
 
-    /* 2) Cargar CSS */
+    /* 3) Cargar CSS */
     GtkCssProvider *prov = gtk_css_provider_new();
     gtk_css_provider_load_from_path(prov, "ui/matrix.css");
     gtk_style_context_add_provider_for_display(
@@ -304,33 +339,43 @@ static void on_activate(GtkApplication *app, gpointer data)
     );
     g_object_unref(prov);
 
-    /* 3) Cargar interfaz */
+    /* 4) Cargar interfaz */
     GtkBuilder *builder = gtk_builder_new_from_file("ui/main_window.ui");
     GtkWindow  *win     = GTK_WINDOW(
         gtk_builder_get_object(builder, "main_window"));
     gtk_window_set_application(win, app);
 
-    /* 4) Umbrales CPU/Mem */
+    /* 5) Umbrales CPU/Mem */
     ThresholdWidgets *th = g_new0(ThresholdWidgets, 1);
     th->cpu_spin = GTK_SPIN_BUTTON(
         gtk_builder_get_object(builder, "cpu_threshold_spin"));
     th->mem_spin = GTK_SPIN_BUTTON(
         gtk_builder_get_object(builder, "mem_threshold_spin"));
-    double cpu_init = gtk_spin_button_get_value(th->cpu_spin);
-    double mem_init = gtk_spin_button_get_value(th->mem_spin);
-    monitor_init(cpu_init, mem_init);
+    monitor_init(
+        gtk_spin_button_get_value(th->cpu_spin),
+        gtk_spin_button_get_value(th->mem_spin)
+    );
     g_signal_connect(th->cpu_spin, "value-changed",
                      G_CALLBACK(on_threshold_changed), th);
     g_signal_connect(th->mem_spin, "value-changed",
                      G_CALLBACK(on_threshold_changed), th);
 
-    /* 5) Montar todas las vistas */
+    /* 6) Umbral y porcentaje sospechosos */
+    GtkSpinButton *sus_spin = GTK_SPIN_BUTTON(
+        gtk_builder_get_object(builder, "suspicious_threshold_spin"));
+    GtkEntry     *pct_entry = GTK_ENTRY(
+        gtk_builder_get_object(builder, "detected_percentage_entry"));
+    g_signal_connect(sus_spin, "value-changed",
+                     G_CALLBACK(on_suspicious_threshold_changed), NULL);
+    g_timeout_add_seconds(1, refresh_suspicious_pct, pct_entry);
+
+    /* 7) Montar todas las vistas */
     prepare_mounts_treeview(builder);
     prepare_usb_events_treeview(builder);
     prepare_ports_treeview(builder);
     prepare_processes_treeview(builder);
 
-    /* 6) Mostrar ventana */
+    /* 8) Mostrar ventana */
     gtk_window_present(win);
     g_object_unref(builder);
 }
