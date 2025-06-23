@@ -69,7 +69,6 @@ static void remove_mount_entry(const char *devnode) {
         if (strcmp(mount_list[i].devnode, devnode) == 0) {
             free(mount_list[i].devnode);
             free(mount_list[i].mnt_dir);
-            free(&mount_list[i].fsid);
             /* shift the rest down */
             for (int j = i; j < mount_count - 1; j++) {
                 mount_list[j] = mount_list[j+1];
