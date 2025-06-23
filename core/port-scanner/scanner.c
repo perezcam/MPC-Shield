@@ -31,7 +31,7 @@ static void *scan_thread(void *arg) {
         int sockfd = connect_to_port(port);
         if (sockfd < 0) continue;
 
-        char banner[256] = {0};
+        char banner[256];
         int n = grab_banner(sockfd, banner, sizeof(banner) - 1);
 
         const char *found_word = search_dangerous_words(banner, n);
