@@ -36,11 +36,6 @@ static int get_process_info(pid_t pid, ProcessInfo *out) {
 }
 
 /* ---------------------------------------------------------------- */
-/* Externo: cálculo de SHA256 de un fichero                         */
-/* ---------------------------------------------------------------- */
-extern int sha256_file(const char *path, unsigned char out[SHA256_DIGEST_LENGTH]);
-
-/* ---------------------------------------------------------------- */
 /* worker_thread:
  *   - Consume eventos de la cola
  *   - Filtra CLOSE_WRITE y MOVED_FROM para evitar duplicados
@@ -85,16 +80,6 @@ void *worker_thread(void *arg) {
         if (stat(ev.file.path, &st) != 0) {
             /* Si fallo stat tras CREATE, igual es un archivo efímero */
             continue;
-        }
-
-        /* Calcular SHA256 para ficheros regulares */
-        ev.file.mode  = st.st_mode;
-        ev.file.mtime = st.st_mtim;
-        if (!S_ISDIR(st.st_mode)) {
-            if (sha256_file(ev.file.path, ev.file.sha256) != 0)
-                continue;
-        } else {
-            memset(ev.file.sha256, 0, sizeof(ev.file.sha256));
         }
 
         /* Reporte de la acción original (CREATE/MODIFY/ATTRIB/MOVED_TO) */

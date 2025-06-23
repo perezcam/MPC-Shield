@@ -42,21 +42,4 @@ int is_known_malware(const unsigned char digest[SHA256_DIGEST_LENGTH]) {
     return 0;
 }
 
-int sha256_file(const char *path, unsigned char out[SHA256_DIGEST_LENGTH]) {
-    unsigned char buf[8192];
-    SHA256_CTX ctx;
-    SHA256_Init(&ctx);
 
-    int fd = open(path, O_RDONLY);
-    if (fd < 0) return -1;
-
-    ssize_t n;
-    while ((n = read(fd, buf, sizeof(buf))) > 0)
-        SHA256_Update(&ctx, buf, n);
-    close(fd);
-
-    if (n < 0) return -1;  /* error durante la lectura */
-
-    SHA256_Final(out, &ctx);
-    return 0;
-}

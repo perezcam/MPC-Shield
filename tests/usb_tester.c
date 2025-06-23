@@ -11,7 +11,7 @@
 // Run with sudo ./usb_tester
 
 // Path
-const char *base_path = "/home/mauricio-mh/workspace/MPC-Shield/tests/usb_mocked";
+const char *base_path = "/media/camilo-perez/Camilo";
 
 
 die(const char *msg) {
