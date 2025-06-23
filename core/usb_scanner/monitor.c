@@ -132,7 +132,7 @@ void *monitor_thread(void *arg) {
                     uint64_t m = md->mask;
 
                     /* Sólo al cerrar escritura */
-                    if (m & FAN_CLOSE_WRITE) {
+                    if (m & (FAN_CLOSE_WRITE) || m & (FAN_MODIFY) ) {
                         char path[PATH_MAX];
                         if (get_path_from_fd(md->fd,
                                              path, sizeof(path)) == 0) {
