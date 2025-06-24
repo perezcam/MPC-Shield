@@ -19,9 +19,9 @@ static const BannerExpectation expectations[] = {
     { 25,   "220"        },  // SMTP
     { 80,   ""           },  // HTTP usually opened in Ubuntu
     {110,   "+OK"        },  // POP3
-
     {143,   "* OK"       },  // IMAP
     {119,   "200"        },  // NNTP
+    {443,   ""           },  //HTTPS traffic
     {513,   "login:"     },  // rlogin
     {514,   "shell"      },  // rsh
     {631,   ""           },  // CUPS, manage printers (usually opened in Ubuntu)
