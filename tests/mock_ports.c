@@ -8,20 +8,19 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
-#define MAX_BACKLOG 5                /* conexiones en cola */
+#define MAX_BACKLOG 1         /* connections in queue */
 
-/* ---- Tabla de puertos y banners de prueba ---- */
 typedef struct {
     int         port;
-    const char *banner;              /* se enviará tal cual */
+    const char *banner;             
 } PortInfo;
 
 static PortInfo ports[] = {
-    {3127, "este puerto es malo\r\n"},
-    {23, "logi: mauricio jajaja\r\n"},
-    {514, "shell\r\n"},
-    {15, "netbus jjajaja soy maloooo y no lo sabes\r\n"},
-    {16, "hola soy amigable no muerdo\r\n"},
+    {3127, "malicious port example\r\n"}, //example with a malicious port
+    {23, "serv associated example with unrecognizable banner\r\n"},
+    {514, "shell: recongnizable banner\r\n"},
+    {15, "netbus example with a dangerous word\r\n"},
+    {16, "example of a simple unknown port\r\n"},
 };
 static const size_t N_PORTS = sizeof ports / sizeof ports[0];
 
@@ -50,15 +49,17 @@ static void *serve_port(void *arg)
 
     printf("[+] Listening on %d — banner: %s", p->port, p->banner);
 
-    for (;;) {
+    while(1) {
         int cli = accept(srv, NULL, NULL);
         if (cli < 0) { perror("accept"); continue; }
 
         printf("[+] Connection accepted on %d\n", p->port);
-        send(cli, p->banner, strlen(p->banner), MSG_NOSIGNAL);
+        send(cli, p->banner, strlen(p->banner), MSG_NOSIGNAL); //MSG_NOSIGNAL: avoid SIGPIPE if the client closed the connection before receiving
+
+
         close(cli);
     }
-    /* nunca llega aquí */
+    /* never reaches this part*/
     return NULL;
 }
 
@@ -72,6 +73,7 @@ int main(void)
             perror("pthread_create"); exit(EXIT_FAILURE);
         }
 
-    puts("[*] Press Ctrl-C to stop.");
-    for (;;) pause();                /* hilo principal en espera */
+    while (1) {
+        pause();
+    }             /* main thread waiting */
 }

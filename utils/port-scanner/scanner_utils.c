@@ -10,7 +10,7 @@
 
 
 #define HOST "127.0.0.1"
-#define BANNER_TIMEOUT_SEC 2
+
 
 static const BannerExpectation expectations[] = {
     { 21,   "220"        },  // FTP
@@ -51,8 +51,8 @@ int connect_to_port(int port) {
         return -1;
     }
 
-    // set a small timeout for connect
-    struct timeval timeout = {BANNER_TIMEOUT_SEC, 0};
+    // set timeout for connect
+    struct timeval timeout = {2, 0};
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 

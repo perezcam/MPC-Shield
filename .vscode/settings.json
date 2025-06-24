@@ -5,6 +5,7 @@
         "monitor.h": "c",
         "stdlib.h": "c",
         "gtk.h": "c",
-        "atomic": "c"
+        "atomic": "c",
+        "shared.h": "c"
     }
 }
